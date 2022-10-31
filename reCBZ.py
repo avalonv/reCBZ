@@ -33,6 +33,7 @@ class Config():
         # ---------------------------------------------------------------------
         # new image width / height. set to 0 to preserve original dimensions
         self.newsize:tuple = (1440,1920)
+        self.newsize = (0,0)
         # set to True to not upscale images smaller than newsize
         self.shrinkonly:bool = False
         # compression quality for images (not the archive). greatly affects
@@ -48,11 +49,11 @@ class Config():
         self.resamplemethod = Image.Resampling.LANCZOS
         # whether to convert images to grayscale. moderate effect on file size
         # on full-color comics. useless on BW manga
-        self.grayscale:bool = False
+        self.grayscale:bool = True
         # least to most space respectively: WEBP, JPEG, or PNG. WEBP uses the
         # least space but is not universally supported and may cause errors on
         # old devices, so JPEG is recommended. leave empty to preserve original
-        self.newimgformat:str = 'jpeg'
+        self.newimgformat:str = 'webp'
 
         self.rescale:bool = False
         if all(self.newsize):
@@ -80,21 +81,68 @@ class Archive():
         return img
 
 
-    def transform_img(self, path:str) -> str:
+    def transform_img(self, source:str):
         start_t = time.perf_counter()
-        img = Image.open(path)
+        name, source_ext = os.path.splitext(source)
+        img = Image.open(source)
+        if self.config.newimgformat in ('jpeg', 'png', 'webp'):
+            ext = self.config.newimgformat
+        else:
+            ext = source_ext
+
+        # set IO format specific actions
+        if ext == 'webp':
+            if source_ext == 'png':
+                save_func = self.save_webp_lossless
+            else:
+                save_func = self.save_webp_lossy
+        elif ext == 'jpeg':
+            save_func = self.save_jpeg
+            # remove alpha layer
+            if img.mode in ("RGBA", "P"):
+                self.log('convert: mode RGB')
+                img = img.convert("RGB")
+        elif ext == 'png':
+            save_func = self.save_png
+        else:
+            save_func = self.ignore
+
+        # transform
         if self.config.rescale:
             img = self.resize_img(img)
         if self.config.grayscale:
+            self.log('convert: mode L')
             img = img.convert('L')
-        if not self.config.newimgformat == '':
-            name = os.path.splitext(path)[0]
-            path = f'{name}.{self.config.newimgformat}'
-        img.save(path, optimize=True, quality=self.config.quality)
+
+        # save
+        path = f'{name}.{ext}'
+        result = save_func(img, path)
         end_t = time.perf_counter()
         self.log(f'{path}: completed in {end_t-start_t:.2f}')
+        return result
+
+    # note: webp_lossy appears to result in bigger files than webp_lossless when
+    # the source is a lossless png
+    def save_webp_lossy(self, img:Image.Image, path) -> str:
+        img.save(path, lossless=False, quality=self.config.quality)
         return path
 
+    def save_webp_lossless(self, img:Image.Image, path) -> str:
+        # for some reason 'quality' refers to compresslevel when lossless
+        img.save(path, lossless=True, quality=100)
+        return path
+
+    def save_jpeg(self, img:Image.Image, path) -> str:
+        img.save(path, optimize=True, quality=self.config.quality)
+        return path
+
+    def save_png(self, img:Image.Image, path) -> str:
+        img.save(path, optimize=True, quality=self.config.quality)
+        return path
+
+    def ignore(self, img:Image.Image, path) -> None:
+        self.log("{path}: unknown format, ignoring...'")
+        return None
 
     def repack_zip(self) -> tuple:
         start_t = time.perf_counter()
@@ -109,14 +157,16 @@ class Archive():
             source_paths = [os.path.join(dpath,f) for (dpath, dnames, fnames)
                      in os.walk(tempdir) for f in fnames]
 
-            # transform in place
+            # process images in place
             # if changing file format, paths will diverge from source_paths
             paths = []
             if self.config.parallel:
                 with Pool(processes=self.config.pcount) as pool:
                     results = pool.map(self.transform_img, source_paths)
-                    for path in results:
-                        paths.append(path)
+                    paths = [path for path in results if path]
+                    # for path in results:
+                    #     if path:
+                    #         paths.append(path)
             else:
                 for path in source_paths:
                     paths.append(self.transform_img(path))
@@ -161,7 +211,7 @@ class Archive():
     def pretty_size_diff(cls, base:int, new:int) -> str:
         verb = 'decrease'
         if new > base:
-            verb = 'increase'
+            verb = 'INCREASE!'
         diff = new - base
         pct_diff = f"{diff / base * 100:.2f}%"
         basepretty = cls.get_size_format(base)
@@ -180,7 +230,7 @@ if __name__ == '__main__':
     else:
         print('BAD!!! >:(')
         exit(1)
-    results = soloarchive.repack_zip()
     print(header)
+    results = soloarchive.repack_zip()
     print(f"┌─ '{results[0]}' completed in {results[1]}")
     print(f"└───■■ {results[2]} ■■")
