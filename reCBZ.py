@@ -166,18 +166,14 @@ class Archive():
                      in os.walk(tempdir) for f in fnames]
 
             # process images in place
-            # if changing file format, paths will diverge from source_paths
-            paths = []
+            # if changing file format, paths will diverge from source_paths,
+            # otherwise they're identical
             if self.config.parallel:
                 with Pool(processes=self.config.pcount) as pool:
                     results = pool.map(self.transform_img, source_paths)
-                    paths = [path for path in results if path]
-                    # for path in results:
-                    #     if path:
-                    #         paths.append(path)
             else:
-                for path in source_paths:
-                    paths.append(self.transform_img(path))
+                results = map(self.transform_img, source_paths)
+            paths = [path for path in results if path]
             names = [os.path.basename(f) for f in paths]
 
             # write to new local archive
