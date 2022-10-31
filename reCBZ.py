@@ -59,6 +59,7 @@ class Config():
         if all(self.newsize):
             self.rescale = True
 
+
 class Archive():
     def __init__(self, filename:str, config:Config):
         self.filename = filename
@@ -84,7 +85,12 @@ class Archive():
     def transform_img(self, source:str):
         start_t = time.perf_counter()
         name, source_ext = os.path.splitext(source)
-        img = Image.open(source)
+        try:
+            img = Image.open(source)
+        except IOError:
+            self.log(f"{source}: can't open as image, ignoring...'")
+            return None
+
         if self.config.newimgformat in ('jpeg', 'png', 'webp'):
             ext = self.config.newimgformat
         else:
@@ -92,11 +98,13 @@ class Archive():
 
         # set IO format specific actions
         if ext == 'webp':
+            # webp_lossy appears to result in bigger files than webp_lossless
+            # when the source is a lossless png
             if source_ext == 'png':
                 save_func = self.save_webp_lossless
             else:
                 save_func = self.save_webp_lossy
-        elif ext == 'jpeg':
+        elif ext in ('jpeg', 'jpg'):
             save_func = self.save_jpeg
             # remove alpha layer
             if img.mode in ("RGBA", "P"):
@@ -105,7 +113,8 @@ class Archive():
         elif ext == 'png':
             save_func = self.save_png
         else:
-            save_func = self.ignore
+            self.log(f"{source}: invalid format, ignoring...'")
+            return None
 
         # transform
         if self.config.rescale:
@@ -121,28 +130,27 @@ class Archive():
         self.log(f'{path}: completed in {end_t-start_t:.2f}')
         return result
 
-    # note: webp_lossy appears to result in bigger files than webp_lossless when
-    # the source is a lossless png
+
     def save_webp_lossy(self, img:Image.Image, path) -> str:
         img.save(path, lossless=False, quality=self.config.quality)
         return path
+
 
     def save_webp_lossless(self, img:Image.Image, path) -> str:
         # for some reason 'quality' refers to compresslevel when lossless
         img.save(path, lossless=True, quality=100)
         return path
 
+
     def save_jpeg(self, img:Image.Image, path) -> str:
         img.save(path, optimize=True, quality=self.config.quality)
         return path
+
 
     def save_png(self, img:Image.Image, path) -> str:
         img.save(path, optimize=True, quality=self.config.quality)
         return path
 
-    def ignore(self, img:Image.Image, path) -> None:
-        self.log("{path}: unknown format, ignoring...'")
-        return None
 
     def repack_zip(self) -> tuple:
         start_t = time.perf_counter()
