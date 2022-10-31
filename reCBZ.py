@@ -11,11 +11,10 @@ except ModuleNotFoundError:
     print("Please install Pillow!\nrun 'pip3 install pillow'")
     exit(1)
 
-header = """                      ,---.,---.,---,
-            ,---.,---.|    |---. .-'  ,---.,   .
-            |    |---'|    |   ||     |   ||   |
-            `    `---'`---'`---'`---'o|---'`---|
-                                      |    `---'"""
+header = """                    ┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬
+                    ├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘
+                    ┴└─└─┘└─┘└─┘└─┘o┴   ┴"""
+
 
 class Config():
     def __init__(self):
@@ -37,8 +36,8 @@ class Config():
         # set to True to not upscale images smaller than newsize
         self.shrinkonly:bool = False
         # compression quality for images (not the archive). greatly affects
-        # file size. higher than 95% is usually counterintuitive
-        self.quality:int = 85
+        # file size. values higher than 95% will increase file size
+        self.quality:int = 80
         # compresslevel for the archive. barely affects file size (images are
         # already compressed) but has a significant impact on performance,
         # which persists when reading the archive, so 0 is strongly recommended
@@ -50,8 +49,9 @@ class Config():
         # whether to convert images to grayscale. moderate effect on file size
         # on full-color comics. useless on BW manga
         self.grayscale:bool = False
-        # convert to JPEG or PNG. JPEG uses significantly less space, but is
-        # lossy. leave empty to retain orginal format
+        # least to most space respectively: WEBP, JPEG, or PNG. WEBP uses the
+        # least space but is not universally supported and may cause errors on
+        # old devices, so JPEG is recommended. leave empty to preserve original
         self.newimgformat:str = 'jpeg'
 
         self.rescale:bool = False
