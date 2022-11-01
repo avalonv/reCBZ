@@ -36,16 +36,16 @@ class Config():
         # self.newsize = (0,0)
         # set to True to not upscale images smaller than newsize
         self.shrinkonly:bool = False
-        # compression quality for images (not the archive). greatly affects
-        # file size. values higher than 95% will increase file size
+        # compression quality for lossy images (not the archive). greatly
+        # affects file size. values higher than 95% will increase file size
         self.quality:int = 80
         # compresslevel for the archive. barely affects file size (images are
         # already compressed) but has a significant impact on performance,
         # which persists when reading the archive, so 0 is strongly recommended
         self.compresslevel:int = 0
         # LANCZOS sacrifices performance for optmial upscale quality. doesn't
-        # affect file size. less critical for downscaling, use BOX or
-        # BILINEAR if performance is important
+        # affect file size. less critical for downscaling, BOX or BILINEAR can
+        # be used if performance is important
         self.resamplemethod = Image.Resampling.LANCZOS
         # whether to convert images to grayscale. moderate effect on file size
         # on full-color comics. useless on BW manga
@@ -53,7 +53,7 @@ class Config():
         # least to most space respectively: WEBP, JPEG, or PNG. WEBP uses the
         # least space but is not universally supported and may cause errors on
         # old devices, so JPEG is recommended. leave empty to preserve original
-        self.newimgformat:str = 'webp'
+        self.imgformat:str = 'webp'
 
         self.rescale:bool = False
         if all(self.newsize):
@@ -82,13 +82,13 @@ class Archive():
                      in os.walk(tempdir) for f in fnames]
 
             # process images in place
-            # if changing file format, paths will diverge from source_paths,
-            # otherwise they're identical
             if self.config.parallel:
                 with Pool(processes=self.config.pcount) as pool:
                     results = pool.map(self._transform_img, source_paths)
             else:
                 results = map(self._transform_img, source_paths)
+            # if changing file format, paths will diverge from source_paths,
+            # otherwise they're identical
             paths = [path for path in results if path]
             names = [os.path.basename(f) for f in paths]
 
@@ -119,8 +119,8 @@ class Archive():
             self._log(f"{source}: can't open as image, ignoring...'")
             return None
 
-        if self.config.newimgformat in ('jpeg', 'png', 'webp'):
-            ext = '.' + self.config.newimgformat
+        if self.config.imgformat in ('jpeg', 'png', 'webp'):
+            ext = '.' + self.config.imgformat
         else:
             ext = source_ext
 
