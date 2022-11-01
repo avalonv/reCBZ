@@ -11,7 +11,7 @@ except ModuleNotFoundError:
     print("Please install Pillow!\nrun 'pip3 install pillow'")
     exit(1)
 
-header = """                    ┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬
+HEADER = """                    ┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬
                     ├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘
                     ┴└─└─┘└─┘└─┘└─┘o┴   ┴"""
 
@@ -25,37 +25,40 @@ class Config():
         # number of processes to spawn
         self.pcount:int = 16
         # this only affects the extension name. will always be a zip archive
-        self.zipextension:str = 'cbz'
-        # debugging
+        self.zipext:str = '.cbz'
+        # number of images to test in analyze
+        self.autocount:int = 10
+        # debugging messages
         self.verbose:bool = False
 
         # Options which affect image quality and/or file size:
         # ---------------------------------------------------------------------
         # new image width / height. set to 0 to preserve original dimensions
-        self.newsize:tuple = (1440,1920)
-        # self.newsize = (0,0)
+        # self.newsize:tuple = (1440,1920)
+        self.newsize = (0,0)
         # set to True to not upscale images smaller than newsize
-        self.shrinkonly:bool = False
+        self.noupscale:bool = False
         # compression quality for lossy images (not the archive). greatly
-        # affects file size. values higher than 95% will increase file size
+        # affects file size. values higher than 95% might increase file size
         self.quality:int = 80
-        # force lossy compression when converting from png to webp
-        self.forcelossy:bool = True
+        # force lossy compression when converting from png to webp. significant
+        # effect on file size, often but not always smaller.
+        self.forcelossy:bool = False
         # compresslevel for the archive. barely affects file size (images are
         # already compressed) but has a significant impact on performance,
-        # which persists when reading the archive, so 0 is strongly recommended
+        # which persists when reading the archive, so 0 is recommended
         self.compresslevel:int = 0
-        # LANCZOS sacrifices performance for optmial upscale quality. doesn't
+        # LANCZOS sacrifices performance for optimal upscale quality. doesn't
         # affect file size. less critical for downscaling, BOX or BILINEAR can
         # be used if performance is important
         self.resamplemethod = Image.Resampling.LANCZOS
         # whether to convert images to grayscale. moderate effect on file size
         # on full-color comics. useless on BW manga
-        self.grayscale:bool = True
+        self.grayscale:bool = False
         # least to most space respectively: WEBP, JPEG, or PNG. WEBP uses the
         # least space but is not universally supported and may cause errors on
         # old devices, so JPEG is recommended. leave empty to preserve original
-        self.imgformat:str = 'webp'
+        self.imgformat:str = 'jpeg'
 
         self.rescale:bool = False
         if all(self.newsize):
@@ -68,16 +71,23 @@ class Archive():
         self.filename = filename
         self.config = config
 
+    def analyze(self) -> str:
+        # convert a sample of the images to determine the best output format
+        return ''
 
-    def repack_zip(self) -> tuple:
+
+    def autorepack(self) -> tuple:
+        return ()
+
+    def repack(self) -> tuple:
         start_t = time.perf_counter()
+        self._log(f'Extracting: {self.filename}', progress=True)
         source_zip = ZipFile(self.filename)
         source_zip_size = os.path.getsize(self.filename)
         source_zip_name = os.path.splitext(str(source_zip.filename))[0]
         with TemporaryDirectory() as tempdir:
             # extract images to temp storage
             source_zip.extractall(tempdir)
-            self._log(f'extract {self.filename} to {tempdir}')
             source_zip.close()
             # https://stackoverflow.com/a/3207973/8225672 nightmarish...
             source_paths = [os.path.join(dpath,f) for (dpath, dnames, fnames)
@@ -95,11 +105,12 @@ class Archive():
             names = [os.path.basename(f) for f in paths]
 
             # write to new local archive
-            zip_name = f'{source_zip_name} [reCBZ].{self.config.zipextension}'
+            zip_name = f'{source_zip_name} [reCBZ]{self.config.zipext}'
             if os.path.exists(zip_name):
                 self._log(f'{zip_name} exists, removing...')
                 os.remove(zip_name)
             new_zip = ZipFile(zip_name,'w')
+            self._log(f'Write {self.config.zipext}: {zip_name}', progress=True)
             for source, dest in zip(paths, names):
                 new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
             new_zip.close()
@@ -115,7 +126,8 @@ class Archive():
         start_t = time.perf_counter()
         name, source_ext = os.path.splitext(source)
         try:
-            log_buff = f'	open: {source}\n'
+            self._log(f'Read image: {os.path.basename(source)}', progress=True)
+            log_buff = f'	/open: {source}\n'
             img = Image.open(source)
         except IOError:
             self._log(f"{source}: can't open as image, ignoring...'")
@@ -138,7 +150,7 @@ class Archive():
             save_func = self._save_jpeg
             # remove alpha layer
             if not img.mode == 'RGB':
-                log_buff += '	convert: mode RGB\n'
+                log_buff += '	|convert: mode RGB\n'
                 img = img.convert('RGB')
         elif ext == '.png':
             save_func = self._save_png
@@ -148,19 +160,19 @@ class Archive():
 
         # transform
         if self.config.grayscale:
-            log_buff += '	convert: mode L\n'
+            log_buff += '	|convert: mode L\n'
             img = img.convert('L')
         if self.config.rescale:
-            log_buff += f'	convert: resize to {self.config.newsize}\n'
+            log_buff += f'	|convert: resize to {self.config.newsize}\n'
             img = self._resize_img(img)
 
         # save
-        log_buff += f'	save: {source_ext} -> {ext}\n'
+        log_buff += f'	|save: {source_ext} -> {ext}\n'
         path = f'{name}{ext}'
         save_func(img, path)
         end_t = time.perf_counter()
         elapsed = f'{end_t-start_t:.2f}s'
-        self._log(f'{log_buff}{os.path.basename(path)}: completed in {elapsed}')
+        self._log(f'{log_buff}	\\{os.path.basename(path)}: took {elapsed}')
         return path
 
 
@@ -175,7 +187,7 @@ class Archive():
         if (width > n_width) and (height > n_height):
             img = img.resize((newsize), self.config.resamplemethod)
         # upscaling
-        elif not self.config.shrinkonly:
+        elif not self.config.noupscale:
             img = img.resize((newsize), self.config.resamplemethod)
         return img
 
@@ -202,9 +214,17 @@ class Archive():
         return path
 
 
-    def _log(self, text:str) -> None:
+    def _log(self, msg:str, progress=False) -> None:
         if self.config.verbose:
-            print(text)
+            print(msg)
+        elif progress:
+            # wrap to 80 characters, no newline
+            msglen = 80
+            msg = msg[:msglen]
+            fill = ' '
+            align = '<'
+            width = msglen
+            print(f'*{msg:{fill}{align}{width}}', end='\r')
         else:
             pass
 
@@ -213,11 +233,11 @@ class Archive():
     def _get_size_format(cls, b:float) -> str:
         # derived from https://github.com/x4nth055 (MIT)
         suffix = "B"
-        factor = 1024
+        FACTOR = 1024
         for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
-            if b < factor:
+            if b < FACTOR:
                 return f"{b:.2f}{unit}{suffix}"
-            b /= factor
+            b /= FACTOR
         return f"{b:.2f}Y{suffix}"
 
 
@@ -244,7 +264,7 @@ if __name__ == '__main__':
     else:
         print('BAD!!! >:(')
         exit(1)
-    print(header)
-    results = soloarchive.repack_zip()
+    print(HEADER)
+    results = soloarchive.repack()
     print(f"┌─ '{results[0]}' completed in {results[1]}")
     print(f"└───■■ {results[2]} ■■")
