@@ -33,7 +33,7 @@ class Config():
         # ---------------------------------------------------------------------
         # new image width / height. set to 0 to preserve original dimensions
         self.newsize:tuple = (1440,1920)
-        self.newsize = (0,0)
+        # self.newsize = (0,0)
         # set to True to not upscale images smaller than newsize
         self.shrinkonly:bool = False
         # compression quality for images (not the archive). greatly affects
@@ -61,12 +61,108 @@ class Config():
 
 
 class Archive():
+    # https://softwareengineering.stackexchange.com/q/225893/305816
     def __init__(self, filename:str, config:Config):
         self.filename = filename
         self.config = config
 
 
-    def resize_img(self, img:Image.Image) -> Image.Image:
+    def repack_zip(self) -> tuple:
+        start_t = time.perf_counter()
+        source_zip = ZipFile(self.filename)
+        source_zip_size = os.path.getsize(self.filename)
+        source_zip_name = os.path.splitext(str(source_zip.filename))[0]
+        with TemporaryDirectory() as tempdir:
+            # extract images to temp storage
+            source_zip.extractall(tempdir)
+            self._log(f'extract {self.filename} to {tempdir}')
+            source_zip.close()
+            # https://stackoverflow.com/a/3207973/8225672 nightmarish...
+            source_paths = [os.path.join(dpath,f) for (dpath, dnames, fnames)
+                     in os.walk(tempdir) for f in fnames]
+
+            # process images in place
+            # if changing file format, paths will diverge from source_paths,
+            # otherwise they're identical
+            if self.config.parallel:
+                with Pool(processes=self.config.pcount) as pool:
+                    results = pool.map(self._transform_img, source_paths)
+            else:
+                results = map(self._transform_img, source_paths)
+            paths = [path for path in results if path]
+            names = [os.path.basename(f) for f in paths]
+
+            # write to new local archive
+            zip_name = f'{source_zip_name} [reCBZ].{self.config.zipextension}'
+            if os.path.exists(zip_name):
+                self._log(f'{zip_name} exists, removing...')
+                os.remove(zip_name)
+            new_zip = ZipFile(zip_name,'w')
+            for source, dest in zip(paths, names):
+                new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
+            new_zip.close()
+            zip_size = os.path.getsize(zip_name)
+
+        end_t = time.perf_counter()
+        elapsed = f'{end_t - start_t:.2f}s'
+        diff = Archive._pretty_size_diff(source_zip_size, zip_size)
+        return zip_name, elapsed, diff
+
+
+    def _transform_img(self, source:str):
+        start_t = time.perf_counter()
+        name, source_ext = os.path.splitext(source)
+        try:
+            log_buff = f'	open: {source}\n'
+            img = Image.open(source)
+        except IOError:
+            self._log(f"{source}: can't open as image, ignoring...'")
+            return None
+
+        if self.config.newimgformat in ('jpeg', 'png', 'webp'):
+            ext = '.' + self.config.newimgformat
+        else:
+            ext = source_ext
+
+        # set IO format specific actions
+        if ext == '.webp':
+            # webp_lossy appears to result in bigger files than webp_lossless
+            # when the source is a lossless png
+            if source_ext == '.png':
+                save_func = self._save_webp_lossless
+            else:
+                save_func = self._save_webp_lossy
+        elif ext in ('.jpeg', '.jpg'):
+            save_func = self._save_jpeg
+            # remove alpha layer
+            if not img.mode == 'RGB':
+                log_buff += '	convert: mode RGB\n'
+                img = img.convert('RGB')
+        elif ext == '.png':
+            save_func = self._save_png
+        else:
+            self._log(f"{source}: invalid format, ignoring...'")
+            return None
+
+        # transform
+        if self.config.grayscale:
+            log_buff += '	convert: mode L\n'
+            img = img.convert('L')
+        if self.config.rescale:
+            log_buff += f'	convert: resize to {self.config.newsize}\n'
+            img = self._resize_img(img)
+
+        # save
+        log_buff += f'	save: {source_ext} -> {ext}\n'
+        path = f'{name}{ext}'
+        save_func(img, path)
+        end_t = time.perf_counter()
+        elapsed = f'{end_t-start_t:.2f}s'
+        self._log(f'{log_buff}{os.path.basename(path)}: completed in {elapsed}')
+        return path
+
+
+    def _resize_img(self, img:Image.Image) -> Image.Image:
         width, height = img.size
         newsize = self.config.newsize
         # preserve aspect ratio for landscape images
@@ -82,117 +178,29 @@ class Archive():
         return img
 
 
-    def transform_img(self, source:str):
-        start_t = time.perf_counter()
-        name, source_ext = os.path.splitext(source)
-        try:
-            img = Image.open(source)
-        except IOError:
-            self.log(f"{source}: can't open as image, ignoring...'")
-            return None
-
-        if self.config.newimgformat in ('jpeg', 'png', 'webp'):
-            ext = self.config.newimgformat
-        else:
-            ext = source_ext
-
-        # set IO format specific actions
-        if ext == 'webp':
-            # webp_lossy appears to result in bigger files than webp_lossless
-            # when the source is a lossless png
-            if source_ext == 'png':
-                save_func = self.save_webp_lossless
-            else:
-                save_func = self.save_webp_lossy
-        elif ext in ('jpeg', 'jpg'):
-            save_func = self.save_jpeg
-            # remove alpha layer
-            if img.mode in ("RGBA", "P"):
-                self.log('convert: mode RGB')
-                img = img.convert("RGB")
-        elif ext == 'png':
-            save_func = self.save_png
-        else:
-            self.log(f"{source}: invalid format, ignoring...'")
-            return None
-
-        # transform
-        if self.config.rescale:
-            img = self.resize_img(img)
-        if self.config.grayscale:
-            self.log('convert: mode L')
-            img = img.convert('L')
-
-        # save
-        path = f'{name}.{ext}'
-        result = save_func(img, path)
-        end_t = time.perf_counter()
-        self.log(f'{path}: completed in {end_t-start_t:.2f}')
-        return result
-
-
-    def save_webp_lossy(self, img:Image.Image, path) -> str:
+    def _save_webp_lossy(self, img:Image.Image, path) -> str:
         img.save(path, lossless=False, quality=self.config.quality)
         return path
 
 
-    def save_webp_lossless(self, img:Image.Image, path) -> str:
-        # for some reason 'quality' refers to compresslevel when lossless
+    def _save_webp_lossless(self, img:Image.Image, path) -> str:
+        # for some reason 'quality' refers to compress_level when lossless
         img.save(path, lossless=True, quality=100)
         return path
 
 
-    def save_jpeg(self, img:Image.Image, path) -> str:
+    def _save_jpeg(self, img:Image.Image, path) -> str:
         img.save(path, optimize=True, quality=self.config.quality)
         return path
 
 
-    def save_png(self, img:Image.Image, path) -> str:
-        img.save(path, optimize=True, quality=self.config.quality)
+    def _save_png(self, img:Image.Image, path) -> str:
+        # img.save(path, optimize=True, quality=self.config.quality)
+        img.save(path, optimize=True, compress_level=9)
         return path
 
 
-    def repack_zip(self) -> tuple:
-        start_t = time.perf_counter()
-        source_zip = ZipFile(self.filename)
-        source_zip_size = os.path.getsize(self.filename)
-        source_zip_name = os.path.splitext(str(source_zip.filename))[0]
-        with TemporaryDirectory() as tempdir:
-            # extract images to temp storage
-            source_zip.extractall(tempdir)
-            source_zip.close()
-            # https://stackoverflow.com/a/3207973/8225672 nightmarish...
-            source_paths = [os.path.join(dpath,f) for (dpath, dnames, fnames)
-                     in os.walk(tempdir) for f in fnames]
-
-            # process images in place
-            # if changing file format, paths will diverge from source_paths,
-            # otherwise they're identical
-            if self.config.parallel:
-                with Pool(processes=self.config.pcount) as pool:
-                    results = pool.map(self.transform_img, source_paths)
-            else:
-                results = map(self.transform_img, source_paths)
-            paths = [path for path in results if path]
-            names = [os.path.basename(f) for f in paths]
-
-            # write to new local archive
-            zip_name = f'{source_zip_name} [reCBZ].{self.config.zipextension}'
-            if os.path.exists(zip_name):
-                os.remove(zip_name)
-            new_zip = ZipFile(zip_name,'w')
-            for source, dest in zip(paths, names):
-                new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
-            new_zip.close()
-            zip_size = os.path.getsize(zip_name)
-
-        end_t = time.perf_counter()
-        elapsed = f'{end_t - start_t:.2f}s'
-        diff = Archive.pretty_size_diff(source_zip_size, zip_size)
-        return zip_name, elapsed, diff
-
-
-    def log(self, text:str) -> None:
+    def _log(self, text:str) -> None:
         if self.config.verbose:
             print(text)
         else:
@@ -200,8 +208,8 @@ class Archive():
 
 
     @classmethod
-    def get_size_format(cls, b:float) -> str:
-        # derived from https://github.com/x4nth055, MIT
+    def _get_size_format(cls, b:float) -> str:
+        # derived from https://github.com/x4nth055 (MIT)
         suffix = "B"
         factor = 1024
         for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
@@ -212,14 +220,14 @@ class Archive():
 
 
     @classmethod
-    def pretty_size_diff(cls, base:int, new:int) -> str:
+    def _pretty_size_diff(cls, base:int, new:int) -> str:
         verb = 'decrease'
         if new > base:
             verb = 'INCREASE!'
         diff = new - base
         pct_diff = f"{diff / base * 100:.2f}%"
-        basepretty = cls.get_size_format(base)
-        newpretty = cls.get_size_format(new)
+        basepretty = cls._get_size_format(base)
+        newpretty = cls._get_size_format(new)
         return f"Original: {basepretty} ■ New: {newpretty} ■ {pct_diff} {verb}"
 
 
