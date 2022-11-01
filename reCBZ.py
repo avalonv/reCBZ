@@ -39,6 +39,8 @@ class Config():
         # compression quality for lossy images (not the archive). greatly
         # affects file size. values higher than 95% will increase file size
         self.quality:int = 80
+        # force lossy compression when converting from png to webp
+        self.forcelossy:bool = True
         # compresslevel for the archive. barely affects file size (images are
         # already compressed) but has a significant impact on performance,
         # which persists when reading the archive, so 0 is strongly recommended
@@ -128,7 +130,7 @@ class Archive():
         if ext == '.webp':
             # webp_lossy appears to result in bigger files than webp_lossless
             # when the source is a lossless png
-            if source_ext == '.png':
+            if source_ext == '.png' and not self.config.forcelossy:
                 save_func = self._save_webp_lossless
             else:
                 save_func = self._save_webp_lossy
