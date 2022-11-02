@@ -7,6 +7,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
 from functools import partial
+from shutil import get_terminal_size
 try:
     from PIL import Image
 except ModuleNotFoundError:
@@ -23,6 +24,11 @@ except ModuleNotFoundError:
 HEADER = """                    ┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬
                     ├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘
                     ┴└─└─┘└─┘└─┘└─┘o┴   ┴"""
+# limit output message width. ignored if verbose
+T_COLUMNS, T_LINES = get_terminal_size()
+if T_COLUMNS > 120: max_column = 120
+elif T_COLUMNS < 30: max_column= 30
+else: max_column = T_COLUMNS
 
 
 class Config():
@@ -69,7 +75,7 @@ class Config():
         # least to most space, generally: WEBP, JPEG, or PNG. WEBP uses less
         # space but is not universally supported and may cause errors on older
         # devices, so JPEG is recommended. leave empty to preserve original
-        self.imgtype:str = 'webp'
+        self.imgtype:str = 'jpeg'
 
         self.rescale:bool = False
         if all(self.newsize):
@@ -284,8 +290,8 @@ class Archive():
         elif self.config.verbose:
             print(msg)
         elif progress:
-            # wrap to 80 characters, no newline
-            msglen = 80
+            # wrap to terminal width characters, no newline
+            msglen = max_column - 1
             msg = msg[:msglen]
             fill = ' '
             align = '<'
