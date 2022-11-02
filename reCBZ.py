@@ -5,11 +5,19 @@ import os
 from zipfile import ZipFile, ZIP_DEFLATED
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
+from functools import partial
 try:
     from PIL import Image
 except ModuleNotFoundError:
     print("Please install Pillow!\nrun 'pip3 install pillow'")
     exit(1)
+
+# TODO:
+# may prove useful for determing format of the images in the archive, although
+# its too new (python 3.11) at the moment:
+# https://docs.python.org/3/library/zipfile.html#zipfile.Path.suffixes
+# consider replacing os.path with pathlib, as it might be simpler:
+# https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
 HEADER = """                    ┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬
                     ├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘
@@ -30,6 +38,8 @@ class Config():
         self.autocount:int = 10
         # debugging messages
         self.verbose:bool = False
+        # suppress progress messages
+        self.quiet:bool = False
 
         # Options which affect image quality and/or file size:
         # ---------------------------------------------------------------------
@@ -58,7 +68,7 @@ class Config():
         # least to most space respectively: WEBP, JPEG, or PNG. WEBP uses the
         # least space but is not universally supported and may cause errors on
         # old devices, so JPEG is recommended. leave empty to preserve original
-        self.imgformat:str = 'jpeg'
+        self.imgtype:str = 'webp'
 
         self.rescale:bool = False
         if all(self.newsize):
@@ -66,9 +76,11 @@ class Config():
 
 
 class Archive():
-    # https://softwareengineering.stackexchange.com/q/225893/305816
+    valid_imgtypes = ['webp','png','jpeg'] #,'webpll']
+
+
     def __init__(self, filename:str, config:Config):
-        self.filename = filename
+        self.filename = filename # TODO: test if exists, raise otherwise
         self.config = config
 
     def analyze(self) -> str:
@@ -79,6 +91,7 @@ class Archive():
     def autorepack(self) -> tuple:
         return ()
 
+
     def repack(self) -> tuple:
         start_t = time.perf_counter()
         self._log(f'Extracting: {self.filename}', progress=True)
@@ -86,23 +99,19 @@ class Archive():
         source_zip_size = os.path.getsize(self.filename)
         source_zip_name = os.path.splitext(str(source_zip.filename))[0]
         with TemporaryDirectory() as tempdir:
-            # extract images to temp storage
             source_zip.extractall(tempdir)
             source_zip.close()
-            # https://stackoverflow.com/a/3207973/8225672 nightmarish...
-            source_paths = [os.path.join(dpath,f) for (dpath, dnames, fnames)
-                     in os.walk(tempdir) for f in fnames]
+            source_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
+                            in os.walk(tempdir) for f in fnames]
 
             # process images in place
             if self.config.parallel:
                 with Pool(processes=self.config.pcount) as pool:
-                    results = pool.map(self._transform_img, source_paths)
+                    results = pool.map(self._transform_img, source_imgs)
             else:
-                results = map(self._transform_img, source_paths)
-            # if changing file format, paths will diverge from source_paths,
-            # otherwise they're identical
-            paths = [path for path in results if path]
-            names = [os.path.basename(f) for f in paths]
+                results = map(self._transform_img, source_imgs)
+            converted_imgs = [path for path in results if path]
+            names = [os.path.basename(f) for f in converted_imgs] # TODO: unecessary?
 
             # write to new local archive
             zip_name = f'{source_zip_name} [reCBZ]{self.config.zipext}'
@@ -111,20 +120,21 @@ class Archive():
                 os.remove(zip_name)
             new_zip = ZipFile(zip_name,'w')
             self._log(f'Write {self.config.zipext}: {zip_name}', progress=True)
-            for source, dest in zip(paths, names):
+            for source, dest in zip(converted_imgs, names):
                 new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
             new_zip.close()
             zip_size = os.path.getsize(zip_name)
 
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
-        diff = Archive._pretty_size_diff(source_zip_size, zip_size)
+        diff = Archive._diff_summary_single(source_zip_size, zip_size)
+        self._log('', progress=True)
         return zip_name, elapsed, diff
 
 
-    def _transform_img(self, source:str):
+    def _transform_img(self, source:str, dest=None, newformat=None):
         start_t = time.perf_counter()
-        name, source_ext = os.path.splitext(source)
+        source_stem, source_ext = os.path.splitext(source)
         try:
             self._log(f'Read image: {os.path.basename(source)}', progress=True)
             log_buff = f'	/open: {source}\n'
@@ -133,15 +143,17 @@ class Archive():
             self._log(f"{source}: can't open as image, ignoring...'")
             return None
 
-        if self.config.imgformat in ('jpeg', 'png', 'webp'):
-            ext = '.' + self.config.imgformat
+        if newformat:
+            ext = '.' + newformat
+        elif self.config.imgtype in ('jpeg', 'png', 'webp'):
+            ext = '.' + self.config.imgtype
         else:
             ext = source_ext
 
         # set IO format specific actions
         if ext == '.webp':
             # webp_lossy appears to result in bigger files than webp_lossless
-            # when the source is a lossless png
+            # when the source is a png
             if source_ext == '.png' and not self.config.forcelossy:
                 save_func = self._save_webp_lossless
             else:
@@ -167,12 +179,15 @@ class Archive():
             img = self._resize_img(img)
 
         # save
-        log_buff += f'	|save: {source_ext} -> {ext}\n'
-        path = f'{name}{ext}'
+        if dest:
+            path = os.path.join(dest, f'{os.path.basename(source_stem)}{ext}')
+        else:
+            path = f'{source_stem}{ext}'
+        log_buff += f'	|convert: {source_ext} -> {ext}\n'
         save_func(img, path)
         end_t = time.perf_counter()
         elapsed = f'{end_t-start_t:.2f}s'
-        self._log(f'{log_buff}	\\{os.path.basename(path)}: took {elapsed}')
+        self._log(f'{log_buff}	\\write: {path}: took {elapsed}')
         return path
 
 
@@ -215,7 +230,9 @@ class Archive():
 
 
     def _log(self, msg:str, progress=False) -> None:
-        if self.config.verbose:
+        if self.config.quiet:
+            pass
+        elif self.config.verbose:
             print(msg)
         elif progress:
             # wrap to 80 characters, no newline
@@ -242,7 +259,7 @@ class Archive():
 
 
     @classmethod
-    def _pretty_size_diff(cls, base:int, new:int) -> str:
+    def _diff_summary_single(cls, base:int, new:int) -> str:
         verb = 'decrease'
         if new > base:
             verb = 'INCREASE!'
@@ -251,6 +268,11 @@ class Archive():
         basepretty = cls._get_size_format(base)
         newpretty = cls._get_size_format(new)
         return f"Original: {basepretty} ■ New: {newpretty} ■ {pct_diff} {verb}"
+
+
+    @classmethod
+    def _diff_summary_multiple(cls, totals:tuple) -> str:
+        return ''
 
 
 
@@ -265,6 +287,8 @@ if __name__ == '__main__':
         print('BAD!!! >:(')
         exit(1)
     print(HEADER)
+    soloarchive.analyze()
+    exit(4)
     results = soloarchive.repack()
     print(f"┌─ '{results[0]}' completed in {results[1]}")
     print(f"└───■■ {results[2]} ■■")
