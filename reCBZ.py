@@ -84,7 +84,52 @@ class Archive():
         self.config = config
 
     def analyze(self) -> str:
-        # convert a sample of the images to determine the best output format
+        self._log(f'Extracting: {self.filename}', progress=True)
+        source_zip = ZipFile(self.filename)
+        compressed_files = source_zip.namelist()
+
+        # select 5 images from the middle of the archive, in increments of two
+        delta = int(len(compressed_files) / 2)
+        sample_size = 5
+        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
+
+        # extract them and compute their size
+        size_totals = []
+        with TemporaryDirectory() as tempdir:
+            for name in sample_imgs:
+                source_zip.extract(name, tempdir)
+            source_zip.close()
+            # https://stackoverflow.com/a/3207973/8225672 absolutely nightmarish
+            # but this is the only way to avoid problems with subfolders
+            sample_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
+                            in os.walk(tempdir) for f in fnames]
+            nbytes = sum(os.path.getsize(f) for f in sample_imgs)
+            fmt = os.path.splitext(sample_imgs[0])[1]
+            size_totals.append((nbytes, f'{fmt[1:]} (original)'))
+
+            # also compute the size of each valid format after converting
+            for fmt in Archive.valid_imgtypes:
+                fmtdir = os.path.join(tempdir, fmt)
+                os.mkdir(fmtdir)
+                func = partial(self._transform_img, newformat=fmt, dest=fmtdir)
+                if self.config.parallel:
+                    with Pool(processes=self.config.pcount) as pool:
+                        results = pool.map(func, sample_imgs)
+                else:
+                    results = map(func, sample_imgs)
+                converted_imgs = [path for path in results if path]
+                nbytes = sum(os.path.getsize(f) for f in converted_imgs)
+                size_totals.append((nbytes,fmt))
+
+        # finally, compare
+        # in multidepth lists, sorted compares the first element by default :)
+        size_totals = sorted(size_totals)
+        self._log(str(size_totals))
+        self._log('', progress=True)
+        for i, totals in enumerate(size_totals): # TODO move to _diff_summary_multiple
+            fmt = totals[1]
+            human_size = Archive._get_size_format(totals[0])
+            print(f'{i+1}: {fmt} -- {human_size}')
         return ''
 
 
