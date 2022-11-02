@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 from sys import argv, exit
 import time
@@ -65,14 +66,21 @@ class Config():
         # whether to convert images to grayscale. moderate effect on file size
         # on full-color comics. useless on BW manga
         self.grayscale:bool = False
-        # least to most space respectively: WEBP, JPEG, or PNG. WEBP uses the
-        # least space but is not universally supported and may cause errors on
-        # old devices, so JPEG is recommended. leave empty to preserve original
+        # least to most space, generally: WEBP, JPEG, or PNG. WEBP uses less
+        # space but is not universally supported and may cause errors on older
+        # devices, so JPEG is recommended. leave empty to preserve original
         self.imgtype:str = 'webp'
 
         self.rescale:bool = False
         if all(self.newsize):
             self.rescale = True
+
+
+# TODO define class with name, description, and extension attributes for each
+# format. perhaps also define Image.save() arguments as __init__ attributes
+# so there's a universal "save" method after instantiating
+class ImageFormat():
+    pass
 
 
 class Archive():
@@ -83,15 +91,15 @@ class Archive():
         self.filename = filename # TODO: test if exists, raise otherwise
         self.config = config
 
-    def analyze(self) -> str:
+    def analyze(self) -> tuple:
         self._log(f'Extracting: {self.filename}', progress=True)
         source_zip = ZipFile(self.filename)
         compressed_files = source_zip.namelist()
 
         # select 5 images from the middle of the archive, in increments of two
-        delta = int(len(compressed_files) / 2)
+        delta = int(len(compressed_files) / 2) # TODO raise if archive is too small
         sample_size = 5
-        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
+        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:1]
 
         # extract them and compute their size
         size_totals = []
@@ -104,14 +112,15 @@ class Archive():
             sample_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
                             in os.walk(tempdir) for f in fnames]
             nbytes = sum(os.path.getsize(f) for f in sample_imgs)
-            fmt = os.path.splitext(sample_imgs[0])[1]
-            size_totals.append((nbytes, f'{fmt[1:]} (original)'))
+            sample_fmt = os.path.splitext(sample_imgs[0])[1][1:].lower()
+            if sample_fmt == 'jpg': sample_fmt = 'jpeg'
+            size_totals.append((nbytes, f'{sample_fmt} (original)'))
 
             # also compute the size of each valid format after converting
             for fmt in Archive.valid_imgtypes:
                 fmtdir = os.path.join(tempdir, fmt)
                 os.mkdir(fmtdir)
-                func = partial(self._transform_img, newformat=fmt, dest=fmtdir)
+                func = partial(self._transform_img, dest=fmtdir, newformat=fmt)
                 if self.config.parallel:
                     with Pool(processes=self.config.pcount) as pool:
                         results = pool.map(func, sample_imgs)
@@ -123,18 +132,12 @@ class Archive():
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
-        size_totals = sorted(size_totals)
+        size_totals = tuple(sorted(size_totals))
+        suggested_fmt = size_totals[0][1]
+        summary = Archive._diff_summary_analyze(size_totals, sample_size)
         self._log(str(size_totals))
         self._log('', progress=True)
-        for i, totals in enumerate(size_totals): # TODO move to _diff_summary_multiple
-            fmt = totals[1]
-            human_size = Archive._get_size_format(totals[0])
-            print(f'{i+1}: {fmt} -- {human_size}')
-        return ''
-
-
-    def autorepack(self) -> tuple:
-        return ()
+        return suggested_fmt, summary
 
 
     def repack(self) -> tuple:
@@ -143,6 +146,7 @@ class Archive():
         source_zip = ZipFile(self.filename)
         source_zip_size = os.path.getsize(self.filename)
         source_zip_name = os.path.splitext(str(source_zip.filename))[0]
+        # extract all
         with TemporaryDirectory() as tempdir:
             source_zip.extractall(tempdir)
             source_zip.close()
@@ -172,7 +176,7 @@ class Archive():
 
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
-        diff = Archive._diff_summary_single(source_zip_size, zip_size)
+        diff = Archive._diff_summary_repack(source_zip_size, zip_size)
         self._log('', progress=True)
         return zip_name, elapsed, diff
 
@@ -304,21 +308,46 @@ class Archive():
 
 
     @classmethod
-    def _diff_summary_single(cls, base:int, new:int) -> str:
-        verb = 'decrease'
-        if new > base:
-            verb = 'INCREASE!'
+    def _get_pct_change(cls, base:float, new:float) -> str:
         diff = new - base
-        pct_diff = f"{diff / base * 100:.2f}%"
-        basepretty = cls._get_size_format(base)
-        newpretty = cls._get_size_format(new)
-        return f"Original: {basepretty} ■ New: {newpretty} ■ {pct_diff} {verb}"
+        pct_change = diff / base * 100
+        if pct_change >= 0:
+            return f"+{pct_change:.2f}%"
+        else:
+            return f"{pct_change:.2f}%"
 
 
     @classmethod
-    def _diff_summary_multiple(cls, totals:tuple) -> str:
-        return ''
+    def _diff_summary_repack(cls, base:int, new:int) -> str:
+        verb = 'decrease'
+        if new > base:
+            verb = 'INCREASE!'
+        change = Archive._get_pct_change(base, new)
+        basepretty = cls._get_size_format(base)
+        newpretty = cls._get_size_format(new)
+        return f"Original: {basepretty} ■ New: {newpretty} ■ {change} {verb}"
 
+
+    @classmethod
+    def _diff_summary_analyze(cls, totals:tuple, sample_size:int) -> str:
+        base = [total[0] for total in totals if 'original' in total[1]][0]
+        summary = f'┌── Disk size ({sample_size} pages) with present settings\n'
+        for i, total in enumerate(totals):
+            if i == len(totals)-1:
+                prefix = '└─'
+            # elif i == 0:
+            #     prefix = '┌───'
+            else:
+                prefix = '├─'
+            change = cls._get_pct_change(base, total[0])
+            fmt = total[1]
+            human_size = Archive._get_size_format(total[0])
+            # justify to the left and right respectively. effectively the same
+            # as using f'{part1: <20} | {part2: >8}\n'
+            part1 = f'{prefix}■{i+1} {fmt}'.ljust(25)
+            part2 = f'{human_size}'.rjust(8)
+            summary += f'{part1} {part2} | {change}\n'
+        return summary[0:-1] # strip last newline
 
 
 # class ArchiveList():
@@ -332,8 +361,11 @@ if __name__ == '__main__':
         print('BAD!!! >:(')
         exit(1)
     print(HEADER)
-    soloarchive.analyze()
-    exit(4)
-    results = soloarchive.repack()
-    print(f"┌─ '{results[0]}' completed in {results[1]}")
-    print(f"└───■■ {results[2]} ■■")
+    if len(argv) > 2 and argv[2] == '-a':
+        results = soloarchive.analyze()
+        print(results[1])
+        print(f'Suggested format: {results[0]}')
+    else:
+        results = soloarchive.repack()
+        print(f"┌─ '{results[0]}' completed in {results[1]}")
+        print(f"└───■■ {results[2]} ■■")
