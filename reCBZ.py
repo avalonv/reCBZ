@@ -21,14 +21,23 @@ except ModuleNotFoundError:
 # consider replacing os.path with pathlib, as it might be simpler:
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
-HEADER = """                    ┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬
-                    ├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘
-                    ┴└─└─┘└─┘└─┘└─┘o┴   ┴"""
 # limit output message width. ignored if verbose
 T_COLUMNS, T_LINES = get_terminal_size()
 if T_COLUMNS > 120: max_column = 120
 elif T_COLUMNS < 30: max_column= 30
 else: max_column = T_COLUMNS
+
+
+def print_title() -> None:
+    align = int(T_COLUMNS / 2) - 11
+    if align > 21: align = 21
+    if align + 22 > T_COLUMNS or align < 0:
+        align = 0
+    align = align * ' '
+    title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
+                       f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
+                       f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
+    print(title_multiline)
 
 
 class Config():
@@ -366,7 +375,7 @@ if __name__ == '__main__':
     else:
         print('BAD!!! >:(')
         exit(1)
-    print(HEADER)
+    print_title()
     if len(argv) > 2 and argv[2] == '-a':
         results = soloarchive.analyze()
         print(results[1])
