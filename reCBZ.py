@@ -93,9 +93,12 @@ class Config():
 
 # TODO define class with name, description, and extension attributes for each
 # format. perhaps also define Image.save() arguments as __init__ attributes
-# so there's a universal "save" method after instantiating
-class ImageFormat():
-    pass
+# so there's a universal "save" method. instantiate them in Config
+class ImgFormat():
+    def __init__(self, name, extension, save_args):
+        self.name = name
+        self.ext = extension
+        self.args = save_args
 
 
 class Archive():
