@@ -25,7 +25,7 @@ except ModuleNotFoundError:
 T_COLUMNS, T_LINES = get_terminal_size()
 if T_COLUMNS > 120: max_column = 120
 elif T_COLUMNS < 30: max_column= 30
-else: max_column = T_COLUMNS
+else: max_column = T_COLUMNS - 2
 
 
 def print_title() -> None:
