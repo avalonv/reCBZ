@@ -23,9 +23,9 @@ except ModuleNotFoundError:
 
 # limit output message width. ignored if verbose
 T_COLUMNS, T_LINES = get_terminal_size()
-if T_COLUMNS > 120: max_column = 120
-elif T_COLUMNS < 30: max_column= 30
-else: max_column = T_COLUMNS - 2
+if T_COLUMNS > 120: max_width = 120
+elif T_COLUMNS < 30: max_width= 30
+else: max_width = T_COLUMNS - 2
 
 
 def print_title() -> None:
@@ -52,10 +52,9 @@ class Config():
         self.zipext:str = '.cbz'
         # number of images to test in analyze
         self.autocount:int = 10
-        # debugging messages
-        self.verbose:bool = False
-        # suppress progress messages
-        self.quiet:bool = False
+        # level of logging. 0 = quiet. 1 = overlapping progress report.
+        # 2 = streaming progress report. 3 = verbose messages. >3 = everything
+        self.loglevel:int = 1
 
         # Options which affect image quality and/or file size:
         # ---------------------------------------------------------------------
@@ -80,11 +79,11 @@ class Config():
         self.resamplemethod = Image.Resampling.LANCZOS
         # whether to convert images to grayscale. moderate effect on file size
         # on full-color comics. useless on BW manga
-        self.grayscale:bool = False
+        self.grayscale:bool = True
         # least to most space, generally: WEBP, JPEG, or PNG. WEBP uses less
         # space but is not universally supported and may cause errors on older
         # devices, so JPEG is recommended. leave empty to preserve original
-        self.imgtype:str = 'jpeg'
+        self.imgtype:str = 'webp'
 
         self.rescale:bool = False
         if all(self.newsize):
@@ -114,7 +113,7 @@ class Archive():
         # select 5 images from the middle of the archive, in increments of two
         delta = int(len(compressed_files) / 2) # TODO raise if archive is too small
         sample_size = 5
-        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:1]
+        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
 
         # extract them and compute their size
         size_totals = []
@@ -294,20 +293,19 @@ class Archive():
 
 
     def _log(self, msg:str, progress=False) -> None:
-        if self.config.quiet:
-            pass
-        elif self.config.verbose:
-            print(msg)
-        elif progress:
-            # wrap to terminal width characters, no newline
-            msglen = max_column - 1
-            msg = msg[:msglen]
-            fill = ' '
-            align = '<'
-            width = msglen
-            print(f'*{msg:{fill}{align}{width}}', end='\r')
-        else:
-            pass
+        if self.config.loglevel == 0:
+            return
+        elif self.config.loglevel > 3:
+            print(msg, flush=True)
+        elif self.config.loglevel == 3 and not progress:
+            print(msg, flush=True)
+        elif self.config.loglevel == 2 and progress:
+            msg = msg[:max_width]
+            print(f'*{msg: <{max_width}}', end='\n', flush=True)
+        elif self.config.loglevel == 1 and progress:
+            # no newline (i.e. overwrite line)
+            msg = msg[:max_width]
+            print(f'*{msg: <{max_width}}', end='\r', flush=True)
 
 
     @classmethod
