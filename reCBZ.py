@@ -22,98 +22,134 @@ except ModuleNotFoundError:
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
 # limit output message width. ignored if verbose
-T_COLUMNS, T_LINES = get_terminal_size()
-if T_COLUMNS > 120: max_width = 120
-elif T_COLUMNS < 30: max_width= 30
-else: max_width = T_COLUMNS - 2
+TERM_COLUMNS, TERM_LINES = get_terminal_size()
+assert TERM_COLUMNS > 0 and TERM_LINES > 0, "can't determine terminal size"
+if TERM_COLUMNS > 120: max_width = 120
+elif TERM_COLUMNS < 30: max_width= 30
+else: max_width = TERM_COLUMNS - 2
 
 
-def print_title() -> None:
-    align = int(T_COLUMNS / 2) - 11
-    if align > 21: align = 21
-    if align + 22 > T_COLUMNS or align < 0:
-        align = 0
-    align = align * ' '
-    title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
-                       f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
-                       f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
-    print(title_multiline)
+
+class LossyFmt():
+    lossless:bool = False
+    quality:int = 80
+
+
+class LosslessFmt():
+    lossless:bool = True
+    quality:int = 100
+
+
+class Jpeg(LossyFmt):
+    name:str = 'jpeg'
+    ext:tuple = '.jpeg', '.jpg'
+    desc:str = 'JPEG'
+
+    @classmethod
+    def save(cls, img:Image.Image, dest):
+        img.save(dest, optimize=True, quality=cls.quality)
+
+
+class WebpLossy(LossyFmt):
+    # conclusions: optmize appears to have no effect. method >4 has a very mild
+    # effect (~1% reduction with 800MB jpeg source), but takes twice as long
+    name:str = 'webp'
+    ext:tuple = '.webp',
+    desc:str = 'WebP'
+
+    @classmethod
+    def save(cls, img:Image.Image, dest):
+        img.save(dest, lossless=cls.lossless, method=5, quality=cls.quality)
+
+
+class WebpLossless(LosslessFmt):
+    name:str = 'webpll'
+    ext:tuple = '.webp',
+    desc:str = 'WebP Lossless'
+
+    @classmethod
+    def save(cls, img:Image.Image, dest):
+        # for some reason 'quality' is akin to Png compress_level when lossless
+        img.save(dest, lossless=cls.lossless, method=4, quality=100)
+
+
+class Png(LosslessFmt):
+    name:str = 'png'
+    ext:tuple = '.png',
+    desc:str = 'PNG'
+
+    @classmethod
+    def save(cls, img:Image.Image, dest):
+        img.save(dest, optimize=True, compress_level=9)
 
 
 class Config():
-    def __init__(self):
-        # General options:
-        # ---------------------------------------------------------------------
-        # whether to enable multiprocessing. fast, uses lots of memory
-        self.parallel:bool = True
-        # number of processes to spawn
-        self.pcount:int = 16
-        # this only affects the extension name. will always be a zip archive
-        self.zipext:str = '.cbz'
-        # number of images to test in analyze
-        self.autocount:int = 10
-        # level of logging. 0 = quiet. 1 = overlapping progress report.
-        # 2 = streaming progress report. 3 = verbose messages. >3 = everything
-        self.loglevel:int = 1
+    # General options:
+    # ---------------------------------------------------------------------
+    # whether to enable multiprocessing. fast, uses lots of memory
+    parallel:bool = True
+    # number of processes to spawn
+    processes:int = 16
+    # this only affects the extension name. will always be a zip archive
+    zipext:str = '.cbz'
+    # number of images to sample in compare
+    comparesamples:int = 10
+    # level of logging. 0 = quiet. 1 = overlapping progress report.
+    # 2 = streaming progress report. 3 = verbose messages. >3 = everything
+    loglevel:int = 1
+    # whether to overwrite the original archive. dangerous
+    overwrite:bool = False
+    # ignore errors when overwrite is true. very dangerous
+    force = False
 
-        # Options which affect image quality and/or file size:
-        # ---------------------------------------------------------------------
-        # new image width / height. set to 0 to preserve original dimensions
-        # self.newsize:tuple = (1440,1920)
-        self.newsize = (0,0)
-        # set to True to not upscale images smaller than newsize
-        self.noupscale:bool = False
-        # compression quality for lossy images (not the archive). greatly
-        # affects file size. values higher than 95% might increase file size
-        self.quality:int = 80
-        # force lossy compression when converting from png to webp. significant
-        # effect on file size, often but not always smaller.
-        self.forcelossy:bool = False
-        # compresslevel for the archive. barely affects file size (images are
-        # already compressed) but has a significant impact on performance,
-        # which persists when reading the archive, so 0 is recommended
-        self.compresslevel:int = 0
-        # LANCZOS sacrifices performance for optimal upscale quality. doesn't
-        # affect file size. less critical for downscaling, BOX or BILINEAR can
-        # be used if performance is important
-        self.resamplemethod = Image.Resampling.LANCZOS
-        # whether to convert images to grayscale. moderate effect on file size
-        # on full-color comics. useless on BW manga
-        self.grayscale:bool = True
-        # least to most space, generally: WEBP, JPEG, or PNG. WEBP uses less
-        # space but is not universally supported and may cause errors on older
-        # devices, so JPEG is recommended. leave empty to preserve original
-        self.imgtype:str = 'webp'
+    # Options which affect image quality and/or file size:
+    # ---------------------------------------------------------------------
+    # new image width / height. set to 0 to preserve original dimensions
+    newsize = (0,0)
+    # set to True to not upscale images smaller than newsize
+    noupscale:bool = False
+    # compression quality for lossy images
+    quality:int = 80
+    # compresslevel for the archive. barely affects file size (images are
+    # already compressed), but negatively impacts performance
+    compresslevel:int = 0
+    # LANCZOS sacrifices performance for optimal upscale quality
+    resamplemethod = Image.Resampling.LANCZOS
+    # whether to convert images to grayscale
+    grayscale:bool = False
+    # format to convert images to
+    targetformat = Png
 
-        self.rescale:bool = False
-        if all(self.newsize):
-            self.rescale = True
-
-
-# TODO define class with name, description, and extension attributes for each
-# format. perhaps also define Image.save() arguments as __init__ attributes
-# so there's a universal "save" method after instantiating
-class ImageFormat():
-    pass
+    @property
+    def rescale(cls) -> bool:
+        if all(cls.newsize):
+            return True
+        else:
+            return False
 
 
 class Archive():
-    valid_imgtypes = ['webp','png','jpeg'] #,'webpll']
+    source_id:str = 'Source'
 
 
     def __init__(self, filename:str, config:Config):
-        self.filename = filename # TODO: test if exists, raise otherwise
-        self.config = config
+        if os.path.isfile(filename): self.filename:str = filename
+        else: raise ValueError(f"{filename}: invalid path")
+        self.config:Config = config
+        LossyFmt.quality = self.config.quality
+        self.valid_formats:tuple = (Png, Jpeg, WebpLossy, WebpLossless)
+
 
     def analyze(self) -> tuple:
         self._log(f'Extracting: {self.filename}', progress=True)
         source_zip = ZipFile(self.filename)
         compressed_files = source_zip.namelist()
 
-        # select 5 images from the middle of the archive, in increments of two
-        delta = int(len(compressed_files) / 2) # TODO raise if archive is too small
-        sample_size = 5
-        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
+        # select x images from the middle of the archive, in increments of two
+        sample_size = self.config.comparesamples
+        if sample_size * 2 > len(compressed_files):
+            raise ValueError(f"{self.filename} is smaller than sample_size * 2")
+        delta = int(len(compressed_files) / 2)
 
         # extract them and compute their size
         size_totals = []
@@ -126,23 +162,22 @@ class Archive():
             sample_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
                             in os.walk(tempdir) for f in fnames]
             nbytes = sum(os.path.getsize(f) for f in sample_imgs)
-            sample_fmt = os.path.splitext(sample_imgs[0])[1][1:].lower()
-            if sample_fmt == 'jpg': sample_fmt = 'jpeg'
-            size_totals.append((nbytes, f'{sample_fmt} (original)'))
+            sample_fmt = self._determine_format(Image.open(sample_imgs[0]))
+            size_totals.append((nbytes,f'{sample_fmt.desc} ({Archive.source_id})'))
 
             # also compute the size of each valid format after converting
-            for fmt in Archive.valid_imgtypes:
-                fmtdir = os.path.join(tempdir, fmt)
+            for fmt in self.valid_formats:
+                fmtdir = os.path.join(tempdir, fmt.name)
                 os.mkdir(fmtdir)
-                func = partial(self._transform_img, dest=fmtdir, newformat=fmt)
+                func = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
                 if self.config.parallel:
-                    with Pool(processes=self.config.pcount) as pool:
+                    with Pool(processes=sample_size) as pool:
                         results = pool.map(func, sample_imgs)
                 else:
                     results = map(func, sample_imgs)
                 converted_imgs = [path for path in results if path]
                 nbytes = sum(os.path.getsize(f) for f in converted_imgs)
-                size_totals.append((nbytes,fmt))
+                size_totals.append((nbytes,fmt.desc))
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
@@ -158,8 +193,8 @@ class Archive():
         start_t = time.perf_counter()
         self._log(f'Extracting: {self.filename}', progress=True)
         source_zip = ZipFile(self.filename)
-        source_zip_size = os.path.getsize(self.filename)
-        source_zip_name = os.path.splitext(str(source_zip.filename))[0]
+        source_size = os.path.getsize(self.filename)
+        source_name = os.path.splitext(str(source_zip.filename))[0]
         # extract all
         with TemporaryDirectory() as tempdir:
             source_zip.extractall(tempdir)
@@ -169,89 +204,119 @@ class Archive():
 
             # process images in place
             if self.config.parallel:
-                with Pool(processes=self.config.pcount) as pool:
+                with Pool(processes=self.config.processes) as pool:
                     results = pool.map(self._transform_img, source_imgs)
             else:
                 results = map(self._transform_img, source_imgs)
-            converted_imgs = [path for path in results if path]
-            names = [os.path.basename(f) for f in converted_imgs] # TODO: unecessary?
+            imgs_abspath = [path for path in results if path]
+            imgs_names = [os.path.basename(f) for f in imgs_abspath] # not unecessary (I think)
+
+            # sanity check
+            discarded = len(source_imgs) - len(imgs_abspath)
+            if discarded > 0:
+                self._log('', progress=True)
+                print(f"[!] {discarded} files had errors and had to be discarded.")
+            if self.config.overwrite:
+                if discarded and not self.config.force:
+                    reply = input("■─■ Proceed with overwriting? [y/n]").lower()
+                    if reply not in ('y', 'yes'):
+                        print('[!] Aborting')
+                        exit(1)
+                new_name = self.filename
+            else:
+                new_name = f'{source_name} [reCBZ]{self.config.zipext}'
 
             # write to new local archive
-            zip_name = f'{source_zip_name} [reCBZ]{self.config.zipext}'
-            if os.path.exists(zip_name):
-                self._log(f'{zip_name} exists, removing...')
-                os.remove(zip_name)
-            new_zip = ZipFile(zip_name,'w')
-            self._log(f'Write {self.config.zipext}: {zip_name}', progress=True)
-            for source, dest in zip(converted_imgs, names):
+            if os.path.exists(new_name):
+                self._log(f'{new_name} exists, removing...')
+                os.remove(new_name)
+            new_zip = ZipFile(new_name,'w')
+            self._log(f'Write {self.config.zipext}: {new_name}', progress=True)
+            for source, dest in zip(imgs_abspath, imgs_names):
                 new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
             new_zip.close()
-            zip_size = os.path.getsize(zip_name)
-
+            new_size = os.path.getsize(new_name)
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
-        diff = Archive._diff_summary_repack(source_zip_size, zip_size)
+        diff = Archive._diff_summary_repack(source_size, new_size)
         self._log('', progress=True)
-        return zip_name, elapsed, diff
+        return new_name, elapsed, diff
 
 
-    def _transform_img(self, source:str, dest=None, newformat=None):
+    def _transform_img(self, source:str, dest=None, forceformat=None): #-> None | Str:
         start_t = time.perf_counter()
         source_stem, source_ext = os.path.splitext(source)
+        source_ext = source_ext.lower()
+        # open
         try:
-            self._log(f'Read image: {os.path.basename(source)}', progress=True)
-            log_buff = f'	/open: {source}\n'
+            self._log(f'Read file: {os.path.basename(source)}', progress=True)
+            log_buff = f'/open:  {source}\n'
             img = Image.open(source)
         except IOError:
-            self._log(f"{source}: can't open as image, ignoring...'")
+            self._log(f"{source}: can't open file as image, ignoring...'")
             return None
 
-        if newformat:
-            ext = '.' + newformat
-        elif self.config.imgtype in ('jpeg', 'png', 'webp'):
-            ext = '.' + self.config.imgtype
-        else:
-            ext = source_ext
-
-        # set IO format specific actions
-        if ext == '.webp':
-            # webp_lossy appears to result in bigger files than webp_lossless
-            # when the source is a png
-            if source_ext == '.png' and not self.config.forcelossy:
-                save_func = self._save_webp_lossless
-            else:
-                save_func = self._save_webp_lossy
-        elif ext in ('.jpeg', '.jpg'):
-            save_func = self._save_jpeg
-            # remove alpha layer
-            if not img.mode == 'RGB':
-                log_buff += '	|convert: mode RGB\n'
-                img = img.convert('RGB')
-        elif ext == '.png':
-            save_func = self._save_png
-        else:
-            self._log(f"{source}: invalid format, ignoring...'")
+        # determine target format
+        try:
+            source_fmt = self._determine_format(img)
+        except KeyError:
+            self._log(f"{source}: invalid image format, ignoring...'")
             return None
+        if forceformat:
+            new_fmt = forceformat
+        elif self.config.targetformat is not None:
+            new_fmt = self.config.targetformat
+        else:
+            new_fmt = source_fmt
+
+        # apply format specific actions
+        if new_fmt is Jpeg:
+          if not img.mode == 'RGB':
+              log_buff += '|trans: mode RGB\n'
+              img = img.convert('RGB')
 
         # transform
         if self.config.grayscale:
-            log_buff += '	|convert: mode L\n'
+            log_buff += '|trans: mode L\n'
             img = img.convert('L')
         if self.config.rescale:
-            log_buff += f'	|convert: resize to {self.config.newsize}\n'
+            log_buff += f'|trans: resize to {self.config.newsize}\n'
             img = self._resize_img(img)
 
         # save
+        ext:str = new_fmt.ext[0]
+        path:str
         if dest:
             path = os.path.join(dest, f'{os.path.basename(source_stem)}{ext}')
         else:
             path = f'{source_stem}{ext}'
-        log_buff += f'	|convert: {source_ext} -> {ext}\n'
-        save_func(img, path)
+        log_buff += f'|trans: {source_fmt.name} -> {new_fmt.name}\n'
+        new_fmt.save(img, path)
         end_t = time.perf_counter()
         elapsed = f'{end_t-start_t:.2f}s'
-        self._log(f'{log_buff}	\\write: {path}: took {elapsed}')
+        self._log(f'{log_buff}\\write: {path}: took {elapsed}')
+        self._log(f'Save file: {os.path.basename(path)}', progress=True)
         return path
+
+
+    def _determine_format(self, img:Image.Image):
+        PIL_fmt = img.format
+        if PIL_fmt is None:
+            raise KeyError(f"Image.format returned None")
+        elif PIL_fmt == "PNG":
+            return Png
+        elif PIL_fmt == "JPEG":
+            return Jpeg
+        elif PIL_fmt == "WEBP":
+            # it's possible to test but doesn't appear to be very reliable :(
+            # https://github.com/python-pillow/Pillow/discussions/6716
+            # with open(img.filename, "rb") as fp:
+            #     if fp.read(15)[-1:] == b"L":
+            #         return WebpLossless
+            #     else:
+            return WebpLossy
+        else:
+            raise KeyError(f"'{PIL_fmt}': invalid format")
 
 
     def _resize_img(self, img:Image.Image) -> Image.Image:
@@ -270,28 +335,6 @@ class Archive():
         return img
 
 
-    def _save_webp_lossy(self, img:Image.Image, path) -> str:
-        img.save(path, lossless=False, quality=self.config.quality)
-        return path
-
-
-    def _save_webp_lossless(self, img:Image.Image, path) -> str:
-        # for some reason 'quality' refers to compress_level when lossless
-        img.save(path, lossless=True, quality=100)
-        return path
-
-
-    def _save_jpeg(self, img:Image.Image, path) -> str:
-        img.save(path, optimize=True, quality=self.config.quality)
-        return path
-
-
-    def _save_png(self, img:Image.Image, path) -> str:
-        # img.save(path, optimize=True, quality=self.config.quality)
-        img.save(path, optimize=True, compress_level=9)
-        return path
-
-
     def _log(self, msg:str, progress=False) -> None:
         if self.config.loglevel == 0:
             return
@@ -300,12 +343,14 @@ class Archive():
         elif self.config.loglevel == 3 and not progress:
             print(msg, flush=True)
         elif self.config.loglevel == 2 and progress:
+            msg = '[*] ' + msg
             msg = msg[:max_width]
-            print(f'*{msg: <{max_width}}', end='\n', flush=True)
+            print(f'{msg: <{max_width}}', end='\r', flush=True)
         elif self.config.loglevel == 1 and progress:
-            # no newline (i.e. overwrite line)
+            # # no newline (i.e. overwrite line)
+            msg = '[*] ' + msg
             msg = msg[:max_width]
-            print(f'*{msg: <{max_width}}', end='\r', flush=True)
+            print(f'{msg: <{max_width}}', end='\r', flush=True)
 
 
     @classmethod
@@ -335,16 +380,16 @@ class Archive():
         verb = 'decrease'
         if new > base:
             verb = 'INCREASE!'
-        change = Archive._get_pct_change(base, new)
+        change = cls._get_pct_change(base, new)
         basepretty = cls._get_size_format(base)
         newpretty = cls._get_size_format(new)
-        return f"Original: {basepretty} ■ New: {newpretty} ■ {change} {verb}"
+        return f"{cls.source_id}: {basepretty} ■ New: {newpretty} ■ {change} {verb}"
 
 
     @classmethod
     def _diff_summary_analyze(cls, totals:tuple, sample_size:int) -> str:
-        base = [total[0] for total in totals if 'original' in total[1]][0]
-        summary = f'┌── Disk size ({sample_size} pages) with present settings\n'
+        base = [total[0] for total in totals if cls.source_id in total[1]][0]
+        summary = f'┌─ Disk size ({sample_size} pages) with present settings:\n'
         for i, total in enumerate(totals):
             if i == len(totals)-1:
                 prefix = '└─'
@@ -353,11 +398,11 @@ class Archive():
             else:
                 prefix = '├─'
             change = cls._get_pct_change(base, total[0])
-            fmt = total[1]
-            human_size = Archive._get_size_format(total[0])
+            fmt_name = total[1]
+            human_size = cls._get_size_format(total[0])
             # justify to the left and right respectively. effectively the same
-            # as using f'{part1: <20} | {part2: >8}\n'
-            part1 = f'{prefix}■{i+1} {fmt}'.ljust(25)
+            # as using f'{part1: <25} | {part2: >8}\n'
+            part1 = f'{prefix}■{i+1} {fmt_name}'.ljust(25)
             part2 = f'{human_size}'.rjust(8)
             summary += f'{part1} {part2} | {change}\n'
         return summary[0:-1] # strip last newline
@@ -367,6 +412,17 @@ class Archive():
 #     def __init__(self, )
 
 if __name__ == '__main__':
+    def print_title() -> None:
+        align = int(TERM_COLUMNS / 2) - 11
+        if align > 21: align = 21
+        if align + 22 > TERM_COLUMNS or align < 0:
+            align = 0
+        align = align * ' '
+        title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
+                           f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
+                           f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
+        print(title_multiline)
+
     config = Config()
     if len(argv) > 1 and os.path.isfile(argv[1]):
         soloarchive = Archive(argv[1], config)
