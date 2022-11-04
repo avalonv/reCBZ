@@ -156,3 +156,4 @@ cython_debug/
 *.cbr
 reCBZold.py
 reCBZ2.py
+*.webp
