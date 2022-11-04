@@ -29,7 +29,6 @@ elif TERM_COLUMNS < 30: max_width= 30
 else: max_width = TERM_COLUMNS - 2
 
 
-
 class LossyFmt():
     lossless:bool = False
     quality:int = 80
@@ -150,6 +149,7 @@ class Archive():
         if sample_size * 2 > len(compressed_files):
             raise ValueError(f"{self.filename} is smaller than sample_size * 2")
         delta = int(len(compressed_files) / 2)
+        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
 
         # extract them and compute their size
         size_totals = []
