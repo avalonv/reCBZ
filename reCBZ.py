@@ -98,6 +98,8 @@ class Config():
     loglevel:int = 1
     # whether to overwrite the original archive. dangerous
     overwrite:bool = False
+    # ignore errors when overwrite is true. very dangerous
+    force = False
 
     # Options which affect image quality and/or file size:
     # ---------------------------------------------------------------------
@@ -115,7 +117,7 @@ class Config():
     # whether to convert images to grayscale
     grayscale:bool = False
     # format to convert images to
-    targetformat = WebpLossy
+    targetformat = Png
 
     @property
     def rescale(cls) -> bool:
@@ -135,7 +137,6 @@ class Archive():
         self.config:Config = config
         LossyFmt.quality = self.config.quality
         self.valid_formats:tuple = (Png, Jpeg, WebpLossy, WebpLossless)
-        self.ignored_files:int = 0
 
 
     def analyze(self) -> tuple:
@@ -207,26 +208,34 @@ class Archive():
                     results = pool.map(self._transform_img, source_imgs)
             else:
                 results = map(self._transform_img, source_imgs)
-            converted_imgs = [path for path in results if path]
-            names = [os.path.basename(f) for f in converted_imgs] # TODO: unecessary?
+            imgs_abspath = [path for path in results if path]
+            imgs_names = [os.path.basename(f) for f in imgs_abspath] # not unecessary (I think)
 
-            # TODO f"self.ignored_files had errors and had to be discarded. Proceed with writing?"
-            # write to new local archive
+            # sanity check
+            discarded = len(source_imgs) - len(imgs_abspath)
+            if discarded > 0:
+                self._log('', progress=True)
+                print(f"[!] {discarded} files had errors and had to be discarded.")
             if self.config.overwrite:
-                # new_name = source_name # TODO are they ever different?
+                if discarded and not self.config.force:
+                    reply = input("■─■ Proceed with overwriting? [y/n]").lower()
+                    if reply not in ('y', 'yes'):
+                        print('[!] Aborting')
+                        exit(1)
                 new_name = self.filename
             else:
                 new_name = f'{source_name} [reCBZ]{self.config.zipext}'
+
+            # write to new local archive
             if os.path.exists(new_name):
                 self._log(f'{new_name} exists, removing...')
                 os.remove(new_name)
             new_zip = ZipFile(new_name,'w')
             self._log(f'Write {self.config.zipext}: {new_name}', progress=True)
-            for source, dest in zip(converted_imgs, names):
+            for source, dest in zip(imgs_abspath, imgs_names):
                 new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
             new_zip.close()
             new_size = os.path.getsize(new_name)
-
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
         diff = Archive._diff_summary_repack(source_size, new_size)
@@ -245,7 +254,6 @@ class Archive():
             img = Image.open(source)
         except IOError:
             self._log(f"{source}: can't open file as image, ignoring...'")
-            self.ignored_files += 1
             return None
 
         # determine target format
@@ -335,12 +343,14 @@ class Archive():
         elif self.config.loglevel == 3 and not progress:
             print(msg, flush=True)
         elif self.config.loglevel == 2 and progress:
+            msg = '[*] ' + msg
             msg = msg[:max_width]
-            print(f'*{msg: <{max_width}}', end='\n', flush=True)
+            print(f'{msg: <{max_width}}', end='\r', flush=True)
         elif self.config.loglevel == 1 and progress:
-            # no newline (i.e. overwrite line)
+            # # no newline (i.e. overwrite line)
+            msg = '[*] ' + msg
             msg = msg[:max_width]
-            print(f'*{msg: <{max_width}}', end='\r', flush=True)
+            print(f'{msg: <{max_width}}', end='\r', flush=True)
 
 
     @classmethod
