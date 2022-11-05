@@ -15,9 +15,6 @@ except ModuleNotFoundError:
     exit(1)
 
 # TODO:
-# may prove useful for determing format of the images in the archive, although
-# its too new (python 3.11) at the moment:
-# https://docs.python.org/3/library/zipfile.html#zipfile.Path.suffixes
 # consider replacing os.path with pathlib, as it might be simpler:
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
@@ -192,8 +189,9 @@ class Archive():
                             in os.walk(tempdir) for f in fnames]
             nbytes = sum(os.path.getsize(f) for f in sample_imgs)
             sample_fmt = self._determine_format(Image.open(sample_imgs[0]))
-            size_totals.append((nbytes,f'{sample_fmt.desc} ({Archive.source_id})'))
-
+            size_totals.append((nbytes,
+                                f'{sample_fmt.desc} ({Archive.source_id})',
+                                sample_fmt.name))
             # also compute the size of each valid format after converting
             for fmt in self.valid_formats:
                 fmtdir = os.path.join(tempdir, fmt.name)
@@ -206,16 +204,17 @@ class Archive():
                     results = map(func, sample_imgs)
                 converted_imgs = [path for path in results if path]
                 nbytes = sum(os.path.getsize(f) for f in converted_imgs)
-                size_totals.append((nbytes,fmt.desc))
+                size_totals.append((nbytes, fmt.desc, fmt.name))
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
         size_totals = tuple(sorted(size_totals))
-        suggested_fmt = size_totals[0][1]
         summary = Archive._diff_summary_analyze(size_totals, sample_size)
+        options_dic = {i : total[2] for i, total in enumerate(size_totals)}
+        suggested_fmt = {"desc": size_totals[0][1], "name": size_totals[0][2]}
         self._log(str(size_totals))
         self._log('', progress=True)
-        return suggested_fmt, summary
+        return summary, options_dic, suggested_fmt
 
 
     def repack(self) -> tuple:
@@ -453,11 +452,50 @@ def print_title() -> None:
     print(title_multiline)
 
 
+def repack(filename:str, config:Config) -> None:
+    results = Archive(filename, config).repack()
+    print(f"┌─ '{results[0]}' completed in {results[1]}")
+    print(f"└───■■ {results[2]} ■■")
+
+
+def assist_repack(filename:str, config:Config) -> None:
+    results = Archive(filename, config).analyze()
+    print(results[0])
+    options = results[1]
+    metavar = f'[1-{len(options)}]'
+    while True:
+        try:
+            reply = int(input(f"■─■ Proceed with {metavar}: ")) - 1
+            selection = options[reply]
+            break
+        except (ValueError, KeyError):
+            print('[!] Ctrl+C to cancel')
+            continue
+        except KeyboardInterrupt:
+            print('[!] Aborting')
+            exit(1)
+    print('would have selected: ', selection)
+    config.formatname = selection
+    repack(filename, config)
+
+
+def auto_repack(filename:str, config:Config) -> None:
+    selection = Archive(filename, config).analyze()[2]
+    fmt_name = selection['name']
+    fmt_desc = selection['desc']
+    print('[!] Proceeding with', fmt_desc)
+    config.formatname = fmt_name
+    repack(filename, config)
+
+
 if __name__ == '__main__':
-    import argparse
-    mode = 0
+    # o god who art in heaven please protect these anime girls
+    print_title()
     config = Config()
-    parser = argparse.ArgumentParser(prog="reCBZ.py")
+    import argparse
+    parser = argparse.ArgumentParser(
+            prog="reCBZ.py",
+            usage='%(prog)s [options] filetorepack.cbz')
     mode_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
@@ -466,22 +504,22 @@ if __name__ == '__main__':
         default=config.dry,
         dest="dry",
         action="store_true",
-        help="dry run, no changes are saved at the end (safe)")
+        help="dry run, no changes are saved at the end of repacking (safe)")
     mode_group.add_argument( "-c", "--compare",
-        const=2,
+        const=1,
         dest="mode",
         action="store_const",
         help="test a small sample with all formats and print the results (safe)")
     mode_group.add_argument( "-a", "--assist",
-        const=3,
+        const=2,
         dest="mode",
         action="store_const",
         help="compare, then ask which format to use for a real run")
     mode_group.add_argument( "-A" ,"--auto",
-        const=4,
+        const=3,
         dest="mode",
         action="store_const",
-        help="compare, then automatically pick the best format for a real run")
+        help="compare, then automatically picks the best format for a real run")
     ext_group.add_argument( "-O", "--overwrite",
         default=config.overwrite,
         dest="overwrite",
@@ -504,6 +542,7 @@ if __name__ == '__main__':
         help="disable all progress messages")
     process_group.add_argument("--processes",
         default=config.processes,
+        choices=(range(1,33)),
         metavar="[1-32]",
         dest="processes",
         type=int,
@@ -522,6 +561,7 @@ if __name__ == '__main__':
         help="extension to save the new archive with")
     parser.add_argument( "--zipcompress",
         default=config.compresslevel,
+        choices=(range(10)),
         metavar="[0-9]",
         dest="compresslevel",
         type=int,
@@ -556,30 +596,28 @@ if __name__ == '__main__':
         dest="grayscale",
         action="store_true",
         help="convert images to grayscale")
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
     # this is probably a not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
         if key in config.__dict__.keys():
             setattr(config, key, val)
-    print()
-    print()
-    print()
-    print()
-    print([f'{k} = {v}' for k, v in config.__dict__.items()])
-    exit(1)
-
-    if len(argv) > 1 and os.path.isfile(argv[1]):
-        soloarchive = Archive(argv[1], config)
-    else:
-        print('BAD!!! >:(')
-        exit(1)
-    print_title()
-    if len(argv) > 2 and argv[2] == '-a':
-        results = soloarchive.analyze()
-        print(results[1])
-        print(f'Suggested format: {results[0]}')
-    else:
-        results = soloarchive.repack()
-        print(f"┌─ '{results[0]}' completed in {results[1]}")
-        print(f"└───■■ {results[2]} ■■")
+    paths = []
+    for arg in unknown_args:
+        if os.path.isfile(arg):
+            paths.append(arg)
+        else:
+            parser.print_help()
+            print(f'\nunknown file or option: {arg}')
+            exit(1)
+    mode:int = args.mode
+    for filename in paths:
+        if mode == 0:
+            repack(filename, config)
+        elif mode == 1:
+            results = Archive(filename, config).analyze()
+            print(results[0])
+        elif mode == 2:
+            assist_repack(filename, config)
+        elif mode == 3:
+            auto_repack(filename, config)
