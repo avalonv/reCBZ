@@ -625,7 +625,8 @@ if __name__ == '__main__':
         if os.path.isfile(arg):
             paths.append(arg)
         elif os.path.isdir(arg):
-            print(f'\n{arg}: is a directory')
+            parser.print_usage()
+            print(f'{arg}: is a directory')
             exit(1)
         else:
             parser.print_help()
