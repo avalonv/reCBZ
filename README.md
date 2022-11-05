@@ -1,21 +1,21 @@
 ## Purpose 
 
-I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to resize the images on the device I'm actually reading from to a slightly lower resolution (1920 x 2560) and convert them to WebP, which often shrinks the file size of a high quality .cbz by 70% or more.
+I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to resize the images on the device I'm actually reading from to a slightly lower resolution (1920 x 2560), and convert them to WebP, which often shrinks the file size of a very high quality .cbz by more than 70%.
 
-For example, this can shrink the first volume of Blame! from 506MB to just under 114MB, with no discernible effect in image quality. Over the 6 volumes which comprise the series, that amounts to over 3GB saved, which is a lot! Even without shrinking, the size can often be reduced by around 50% just by using slightly stronger compression and converting images to grayscale.
+For example, by converting to WebP, this can halve the size of the first volume of Chainsaw Man from 180MB to just under 96MB, with no effect in image quality. Over the 11 published volumes, that amounts to over 1GB saved — which is quite a lot when you consider most e-Readers still have only 4GB! And that's by changing the format, the size can often be further reduced by another 40% by downscaling and converting images to grayscale, while still maintaining optimal visual clarity on a 6" 300PPI screen — effectively doubling the amount of manga you can store on your device.
 
-Note that due to how lossy images formats like JPEG/WebP work, repeatedly overwriting the same file using will eventually lead to noticeable image degradation, so by default this program creates an optimized copy while preserving the original. Lossless formats are also supported.
+Note that this isn't magic. Due to how lossy images formats like JPEG/WebP work, repeatedly compressing and overwriting the same file will eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original. Lossless formats are also supported. As a general rule, you can be more aggressive with compression on black and white images.
 
-Although this was explicitly created with .cbz files in mind, it can be used to pack and convert images in general, with some caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be overwritten).
+Although this was explicitly created with manga and comics (.cbz files) in mind, it can be used to pack and convert images in general, and is pretty fast at that due to parallelism, with some caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be overwritten).
 
-This program should work on Windows, MacOS, and Linux. Image operations are done in parallel through [Pillow](https://github.com/python-pillow/Pillow), the rest uses the standard Python library.
+This program should work on Windows, MacOS, and Linux. Image operations are done through [Pillow](https://github.com/python-pillow/Pillow), the rest uses the standard Python library.
 
 Lastly, this program is new and can lead to unintended loss of data if used carelessly. It's recommended to have a backup somewhere when using --overwrite.
 
 ## Usage
 
 
-Accepts a valid .cbz or .zip file, or a collection of files. Returns an optmized copy based on current settings. See options for defaults.
+Accepts a valid .cbz or .zip file, or a collection of files. Returns a converted copy based on current settings. See options for defaults.
 
 The output file(s) will always be saved as `filename [reCBZ].extension`, unless **--overwrite** is specified.
   
@@ -94,31 +94,33 @@ default: 80
 
 **--resize** *WidthxHeight*  
 default: don't resize  
-default (without value)
+
 <ul>Rescale images to the specified resolution, using Lanczos interpolation. Does its best to detect and preserve landscape images.</ul> 
 
-<ul>Add <b>--noupscale</b> to disable upscaling, so images will only be downscaled (as long as they exceed value).</ul>
+<ul>Add <b>--noupscale</b> to disable upscaling, so images will only be downscaled (as long as they're greater than value).</ul>
+
+<ul>Add <b>--nodownscale</b> to disable upscaling, so images can only be upscaled (as long as they're less than value).</ul>
 
 <ul>1440x1920 (3:4) is suitable for most 6"/7" e-Reader screens. For smaller devices, setting this to 150% of your screen's resolution is usually the best compromise between quality and file size, still allowing you to zoom-in to read the lore critical thoughts of that moe character.</ul>
 
 <ul><b>Note:</b> this isn't magic. Please don't upscale a low quality source to upload to manga sites and claim yours is higher quality, because it isn't, and it will annoy people.</ul>
 
 **--grayscale**  **-bw**  
-<ul>Convert images to grayscale. Useful for e-Paper screens, reducing file size by 10% to 20%. Provides no benefit to comics which only have a few coloured pages (manga).</ul>
+<ul>Convert images to grayscale. Useful for e-Paper screens, reducing file size by another 10% to 20%. Provides no benefit to comics which only have a few coloured pages (manga).</ul>
 
 </details>
 
 ### Examples:
 
-Rescale pages to 1440x1920, convert to grayscale, and save as high quality JPEG:
+Downscale pages to 1440x1920, convert to grayscale, and save as high quality JPEG:
 
-    reCBZ.py --resize 1440x1920 --quality 90 -bw --fmt jpeg 'Chainsaw Man v01 - Tatsuki Fujimoto.cbz'
+    reCBZ.py --resize 1440x1920 --quality 90 -bw --fmt jpeg 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
-For repacking entire directories, use:
+For repacking entire directories (i.e. a series), use:
 
-    reCBZ.py [options] /path/to/dir/*.cbz`
+    reCBZ.py [options] ./'Our Dreams at Dusk - Yuhki Kamatani'/*.cbz`
 
-(unimplemented on Windows)
+(not implemented on Windows)
 
 ## Note about WebP
 
