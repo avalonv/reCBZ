@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from sys import argv, exit
 import time
@@ -14,13 +14,12 @@ except ModuleNotFoundError:
     print("Please install Pillow!\nrun 'pip3 install pillow'")
     exit(1)
 
-README=('https://github.com/avalonv/reCBZ/tree/master/README.md')
-
 # TODO:
 # include docstrings
 # consider replacing os.path with pathlib, as it might be simpler:
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
+README=('https://github.com/avalonv/reCBZ/tree/master/README.md')
 # limit output message width. ignored if verbose
 TERM_COLUMNS, TERM_LINES = get_terminal_size()
 assert TERM_COLUMNS > 0 and TERM_LINES > 0, "can't determine terminal size"
