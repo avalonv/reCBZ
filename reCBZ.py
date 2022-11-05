@@ -100,11 +100,14 @@ class Config():
     overwrite:bool = False
     # ignore errors when overwrite is true. very dangerous
     force = False
+    # TODO finish implementings this
+    # list of formats to exclude from auto and assist
+    blacklistedfmts:tuple = (WebpLossless, WebpLossy)
 
     # Options which affect image quality and/or file size:
     # ---------------------------------------------------------------------
     # new image width / height. set to 0 to preserve original dimensions
-    newsize = (0,0)
+    newsize:tuple = (0,0)
     # set to True to not upscale images smaller than newsize
     noupscale:bool = False
     # compression quality for lossy images
@@ -116,8 +119,8 @@ class Config():
     resamplemethod = Image.Resampling.LANCZOS
     # whether to convert images to grayscale
     grayscale:bool = False
-    # format to convert images to
-    targetformat = Png
+    # default format to convert images to. leave empty to preserve original
+    defaultformat:str = ''
 
     @property
     def rescale(cls) -> bool:
@@ -125,6 +128,15 @@ class Config():
             return True
         else:
             return False
+
+    @property
+    def get_targetformat(cls):
+        if cls.defaultformat in (None, ''): return None
+        elif cls.defaultformat == 'jpeg': return Jpeg
+        elif cls.defaultformat == 'png': return Png
+        elif cls.defaultformat == 'webp': return WebpLossy
+        elif cls.defaultformat == 'webpll': return WebpLossless
+        else: return None
 
 
 class Archive():
@@ -264,8 +276,8 @@ class Archive():
             return None
         if forceformat:
             new_fmt = forceformat
-        elif self.config.targetformat is not None:
-            new_fmt = self.config.targetformat
+        elif self.config.get_targetformat is not None:
+            new_fmt = self.config.get_targetformat
         else:
             new_fmt = source_fmt
 
@@ -408,22 +420,136 @@ class Archive():
         return summary[0:-1] # strip last newline
 
 
-# class ArchiveList():
-#     def __init__(self, )
+def print_title() -> None:
+    align = int(TERM_COLUMNS / 2) - 11
+    if align > 21: align = 21
+    if align + 22 > TERM_COLUMNS or align < 0:
+        align = 0
+    align = align * ' '
+    title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
+                       f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
+                       f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
+    print(title_multiline)
+
 
 if __name__ == '__main__':
-    def print_title() -> None:
-        align = int(TERM_COLUMNS / 2) - 11
-        if align > 21: align = 21
-        if align + 22 > TERM_COLUMNS or align < 0:
-            align = 0
-        align = align * ' '
-        title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
-                           f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
-                           f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
-        print(title_multiline)
+    import argparse
+    mode = 0
+    parser = argparse.ArgumentParser(prog="reCBZ.py")
+    mode_group = parser.add_mutually_exclusive_group()
+    loglvl_group = parser.add_mutually_exclusive_group()
+    process_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument( "-c", "--compare",
+        const=1,
+        dest="mode",
+        action="store_const",
+        help="do a dry run with each image format and print the results")
+    mode_group.add_argument( "-a", "--assist",
+        const=2,
+        dest="mode",
+        action="store_const",
+        help="compare, then ask which format to use for a real run")
+    mode_group.add_argument( "-aa" ,"--auto",
+        const=3,
+        dest="mode",
+        action="store_const",
+        help="compare, then automatically pick the best format for a real run")
+    parser.add_argument( "-O", "--overwrite",
+        default=Config.overwrite,
+        dest="overwrite",
+        action="store_true",
+        help="overwrite the original archive.")
+    parser.add_argument( "-F", "--force",
+        default=Config.force,
+        dest="force",
+        action="store_true",
+        help="ignore errors when using overwrite (dangerous)")
+    loglvl_group.add_argument( "-v", "--verbose",
+        default=Config.loglevel,
+        dest="loglevel",
+        action="count",
+        help="increase verbosity of progress messages. repeat for logs")
+    loglvl_group.add_argument( "-s", "--silent",
+        const=0,
+        dest="loglevel",
+        action="store_const",
+        help="disable all progress messages")
+    process_group.add_argument("--processes",
+        default=Config.processes,
+        metavar="[1-32]",
+        dest="processes",
+        type=int,
+        help="number of processes to spawn")
+    process_group.add_argument( "--sequential",
+        default=Config.parallel,
+        dest="parallel",
+        action="store_false",
+        help="disable multiprocessing, process one image at a time")
+    parser.add_argument( "--zipext",
+        default=Config.zipext,
+        choices=('.cbz', '.zip'),
+        metavar=".cbz/.zip",
+        dest="zipext",
+        type=str,
+        help="extension to save the new archive with")
+    parser.add_argument( "--zipcompress",
+        default=Config.compresslevel,
+        metavar="[0-9]",
+        dest="compresslevel",
+        type=int,
+        help="compression level for the archive. default (0) is recommended")
+    parser.add_argument( "--fmt",
+        default=Config.defaultformat,
+        choices=('jpeg', 'png', 'webp', 'webpll'),
+        metavar="fmt",
+        dest="formatname",
+        type=str,
+        help="format to convert images to: jpeg, webp, webpll, or png")
+    parser.add_argument( "--quality",
+        default=Config.quality,
+        choices=(range(100)),
+        metavar="[0-95]",
+        dest="quality",
+        type=int,
+        help="image save quality for lossy formats")
+    parser.add_argument( "--resize",
+        metavar="WidthxHeight",
+        default=Config.newsize,
+        dest="newsize",
+        type=str,
+        help="rescale images to the specified resolution")
+    parser.add_argument( "-noup", "--noupscale",
+        default=Config.noupscale,
+        dest="noupscale",
+        action="store_true",
+        help="disable upscaling with --resize")
+    parser.add_argument( "-bw", "--grayscale",
+        default=Config.grayscale,
+        dest="grayscale",
+        action="store_true",
+        help="convert images to grayscale")
+    args = parser.parse_args()
+    config = Config
+    # this is probably a not the most pythonic way to do this
+    # I'm sorry guido-san...
+    for key, val in args.__dict__.items():
+        if key == 'newsize':
+            try:
+                assert type(val) is str
+            except AssertionError:
+                continue
+            val = val.lower().strip()
+            resolution = tuple(map(int,val.split('x')))
+            config.newsize = resolution
+        elif key in config.__dict__.keys():
+            setattr(config, key, val)
+    print()
+    print()
+    print()
+    print()
+    print([f'{k} = {v}' for k, v in config.__dict__.items()])
+    exit(1)
 
-    config = Config()
     if len(argv) > 1 and os.path.isfile(argv[1]):
         soloarchive = Archive(argv[1], config)
     else:
