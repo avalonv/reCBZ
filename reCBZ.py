@@ -377,8 +377,8 @@ class Archive():
         elif self.config.loglevel == 2 and progress:
             msg = '[*] ' + msg
             msg = msg[:max_width]
-            print(f'{msg: <{max_width}}', end='\r', flush=True)
         elif self.config.loglevel == 1 and progress:
+            print(f'{msg: <{max_width}}', end='\n', flush=True)
             # # no newline (i.e. overwrite line)
             msg = '[*] ' + msg
             msg = msg[:max_width]
