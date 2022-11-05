@@ -15,7 +15,7 @@ Lastly, this program is new and can lead to unintended loss of data if used care
 ## Usage
 
 
-Accepts a valid .cbz or .zip file, or a collection of files. Returns a converted copy based on current settings. See options for defaults.
+Accepts a valid .cbz or .zip file, or a collection of files. Returns a repacked copy based on current settings. See options for defaults.
 
 The output file(s) will always be saved as `filename [reCBZ].extension`, unless **--overwrite** is specified.
   
@@ -120,7 +120,7 @@ For repacking entire directories (i.e. a series), use:
 
     reCBZ.py [options] ./'Our Dreams at Dusk - Yuhki Kamatani'/*.cbz`
 
-(not implemented on Windows)
+(TODO/not implemented on Windows)
 
 ## Note about WebP
 
