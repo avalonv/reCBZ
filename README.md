@@ -4,9 +4,11 @@ I own a fairly large library of manga, and it takes quite a bit of space on disk
 
 For example, by repacking with --auto/WebP, this can halve the size of the first volume of Chainsaw Man from 180MB to just under 96MB without degrading image quality. Over the 11 published volumes, that amounts to over 1GB saved, which is quite a lot when you consider most e-Readers still have only 4GB! And that's just by changing the format, the size can be further reduced by another 50MB by downscaling to 120% display resolution and converting images to grayscale, while still maintaining optimal visual clarity on a 6" 300PPI screen — effectively tripling the amount of manga you can store on your device.
 
-Note that this isn't magic. Due to how lossy images formats like JPEG/WebP work, repeatedly compressing and overwriting the same file will eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although ossless formats are also supported. As a general rule, you can be more aggressive with compression on black and white images.
+Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also supported. As a general rule, you can be more aggressive with compression on black and white images.
 
-Although this was explicitly created with manga and comics (.cbz files) in mind, it can be used to pack and convert images in general, and is pretty fast at that due to parallelism, with some caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be overwritten).
+It can also be used to upscale low quality images with reasonable success. It is not as good as neural networks, but is capable of doubling the resolution of an image with pretty good anti-aliasing, which is useful if you happen to read lots of of scanlations.
+
+Although this was explicitly created with manga and comics (.cbz files) in mind, it can be used for bulk rescaling and conversion of images in general (and is pretty fast at that due to parallelism), with some caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be overwritten).
 
 This program should work on Windows, MacOS, and Linux. Image operations are done through [Pillow](https://github.com/python-pillow/Pillow), the rest uses the standard Python library.
 
