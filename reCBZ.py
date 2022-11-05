@@ -87,9 +87,9 @@ class Config():
         self.overwrite:bool = False
         # ignore errors when overwrite is true. very dangerous
         self.force:bool = False
-        # level of logging. 0 = quiet. 1 = overlapping progress report.
-        # 2 = streaming progress report. 3 = verbose messages. >3 = everything
-        self.loglevel:int = 1
+        # level of logging: -1 = quiet. 0 = overlapping progress report.
+        # 1 = streaming progress report. 2 = verbose messages. >2 = everything
+        self.loglevel:int = 0
         # whether to enable multiprocessing. fast, uses lots of memory
         self.parallel:bool = True
         # number of processes to spawn
@@ -368,17 +368,17 @@ class Archive():
 
 
     def _log(self, msg:str, progress=False) -> None:
-        if self.config.loglevel == 0:
+        if self.config.loglevel == -1:
             return
-        elif self.config.loglevel > 3:
+        elif self.config.loglevel > 2:
             print(msg, flush=True)
-        elif self.config.loglevel == 3 and not progress:
+        elif self.config.loglevel == 2 and not progress:
             print(msg, flush=True)
-        elif self.config.loglevel == 2 and progress:
+        elif self.config.loglevel == 1 and progress:
             msg = '[*] ' + msg
             msg = msg[:max_width]
-        elif self.config.loglevel == 1 and progress:
             print(f'{msg: <{max_width}}', end='\n', flush=True)
+        elif self.config.loglevel == 0 and progress:
             # # no newline (i.e. overwrite line)
             msg = '[*] ' + msg
             msg = msg[:max_width]
