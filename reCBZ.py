@@ -118,8 +118,10 @@ class Config():
         self.quality:int = 80
         # new image width / height. set to 0 to preserve original dimensions
         self.resolution:str = "0x0"
-        # set to True to not upscale images smaller than newsize
+        # set to True to disable upscaling of images smaller than resolution
         self.noupscale:bool = False
+        # set to True to disable downscaling of images larger than resolution
+        self.nodownscale:bool = False
         # whether to convert images to grayscale
         self.grayscale:bool = False
         # LANCZOS sacrifices performance for optimal upscale quality
@@ -362,7 +364,7 @@ class Archive():
             newsize = newsize[::-1]
         n_width, n_height = newsize
         # downscaling
-        if (width > n_width) and (height > n_height):
+        if (width>n_width) and (height>n_height) and not self.conf.nodownscale:
             img = img.resize((newsize), self.conf.resamplemethod)
         # upscaling
         elif not self.conf.noupscale:
@@ -595,13 +597,18 @@ if __name__ == '__main__':
         dest="noupscale",
         action="store_true",
         help="disable upscaling with --size")
+    parser.add_argument( "-nodw", "--nodownscale",
+        default=config.nodownscale,
+        dest="nodownscale",
+        action="store_true",
+        help="disable downscaling with --size")
     parser.add_argument( "-bw", "--grayscale",
         default=config.grayscale,
         dest="grayscale",
         action="store_true",
         help="convert images to grayscale")
     args, unknown_args = parser.parse_known_args()
-    # this is probably a not the most pythonic way to do this
+    # this is probably not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
         if key in config.__dict__.keys():
