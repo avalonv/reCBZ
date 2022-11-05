@@ -617,6 +617,9 @@ if __name__ == '__main__':
     for arg in unknown_args:
         if os.path.isfile(arg):
             paths.append(arg)
+        elif os.path.isdir(arg):
+            print(f'\n{arg}: is a directory')
+            exit(1)
         else:
             parser.print_help()
             print(f'\nunknown file or option: {arg}')
