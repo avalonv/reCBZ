@@ -15,6 +15,7 @@ except ModuleNotFoundError:
     exit(1)
 
 # TODO:
+# include docstrings
 # consider replacing os.path with pathlib, as it might be simpler:
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
@@ -490,7 +491,6 @@ def auto_repack(filename:str, config:Config) -> None:
 
 if __name__ == '__main__':
     # o god who art in heaven please protect these anime girls
-    print_title()
     config = Config()
     import argparse
     parser = argparse.ArgumentParser(
@@ -610,6 +610,12 @@ if __name__ == '__main__':
             parser.print_help()
             print(f'\nunknown file or option: {arg}')
             exit(1)
+    if len(paths) <= 0:
+        print(f'missing input file')
+        parser.print_usage()
+        exit(1)
+    # everything passed
+    print_title()
     mode:int = args.mode
     for filename in paths:
         if mode == 0:
