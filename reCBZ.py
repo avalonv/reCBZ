@@ -83,62 +83,63 @@ class Png(LosslessFmt):
 
 
 class Config():
-    # General options:
-    # ---------------------------------------------------------------------
-    # whether to overwrite the original archive. dangerous
-    overwrite:bool = False
-    # ignore errors when overwrite is true. very dangerous
-    force:bool = False
-    # level of logging. 0 = quiet. 1 = overlapping progress report.
-    # 2 = streaming progress report. 3 = verbose messages. >3 = everything
-    loglevel:int = 1
-    # whether to enable multiprocessing. fast, uses lots of memory
-    parallel:bool = True
-    # number of processes to spawn
-    processes:int = 16
-    # this only affects the extension name. will always be a zip archive
-    zipext:str = '.cbz'
-    # compresslevel for the archive. barely affects file size (images are
-    # already compressed), but negatively impacts performance
-    compresslevel:int = 0
-    # number of images to sample in compare
-    comparesamples:int = 10
-    # dry run. archive won't be saved, even if overwrite is used
-    dry:bool = False
-    # TODO finish implementings this
-    # list of formats to exclude from auto and assist
-    blacklistedfmts:tuple = (WebpLossless, WebpLossy)
+    def __init__(self):
+        # General options:
+        # ---------------------------------------------------------------------
+        # whether to overwrite the original archive. dangerous
+        self.overwrite:bool = False
+        # ignore errors when overwrite is true. very dangerous
+        self.force:bool = False
+        # level of logging. 0 = quiet. 1 = overlapping progress report.
+        # 2 = streaming progress report. 3 = verbose messages. >3 = everything
+        self.loglevel:int = 1
+        # whether to enable multiprocessing. fast, uses lots of memory
+        self.parallel:bool = True
+        # number of processes to spawn
+        self.processes:int = 16
+        # this only affects the extension name. will always be a zip archive
+        self.zipext:str = '.cbz'
+        # compresslevel for the archive. barely affects file size (images are
+        # already compressed), but negatively impacts performance
+        self.compresslevel:int = 0
+        # number of images to sample in compare
+        self.comparesamples:int = 10
+        # dry run. archive won't be saved, even if overwrite is used
+        self.dry:bool = False
+        # TODO finish implementings this
+        # list of formats to exclude from auto and assist
+        self.blacklistedfmts:tuple = (WebpLossless, WebpLossy)
 
-    # Options which affect image quality and/or file size:
-    # ---------------------------------------------------------------------
-    # default format to convert images to. leave empty to preserve original
-    formatname:str = ''
-    # compression quality for lossy images
-    quality:int = 80
-    # new image width / height. set to 0 to preserve original dimensions
-    resolution:str = "0x0"
-    # set to True to not upscale images smaller than newsize
-    noupscale:bool = False
-    # whether to convert images to grayscale
-    grayscale:bool = False
-    # LANCZOS sacrifices performance for optimal upscale quality
-    resamplemethod = Image.Resampling.LANCZOS
+        # Options which affect image quality and/or file size:
+        # ---------------------------------------------------------------------
+        # default format to convert images to. leave empty to preserve original
+        self.formatname:str = ''
+        # compression quality for lossy images
+        self.quality:int = 80
+        # new image width / height. set to 0 to preserve original dimensions
+        self.resolution:str = "0x0"
+        # set to True to not upscale images smaller than newsize
+        self.noupscale:bool = False
+        # whether to convert images to grayscale
+        self.grayscale:bool = False
+        # LANCZOS sacrifices performance for optimal upscale quality
+        self.resamplemethod = Image.Resampling.LANCZOS
 
 
     @property
-    def get_targetformat(cls):
-        if cls.formatname in (None, ''): return None
-        elif cls.formatname == 'jpeg': return Jpeg
-        elif cls.formatname == 'png': return Png
-        elif cls.formatname == 'webp': return WebpLossy
-        elif cls.formatname == 'webpll': return WebpLossless
+    def get_targetformat(self):
+        if self.formatname in (None, ''): return None
+        elif self.formatname == 'jpeg': return Jpeg
+        elif self.formatname == 'png': return Png
+        elif self.formatname == 'webp': return WebpLossy
+        elif self.formatname == 'webpll': return WebpLossless
         else: return None
 
 
     @property
-    def get_newsize(cls):
+    def get_newsize(self):
         default_value = (0,0)
-        newsize = cls.resolution.lower().strip()
+        newsize = self.resolution.lower().strip()
         try:
             newsize = tuple(map(int,newsize.split('x')))
             assert len(newsize) == 2
@@ -148,8 +149,8 @@ class Config():
 
 
     @property
-    def rescale(cls) -> bool:
-        if all(cls.get_newsize):
+    def rescale(self) -> bool:
+        if all(self.get_newsize):
             return True
         else:
             return False
@@ -455,13 +456,14 @@ def print_title() -> None:
 if __name__ == '__main__':
     import argparse
     mode = 0
+    config = Config()
     parser = argparse.ArgumentParser(prog="reCBZ.py")
     mode_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
     parser.add_argument( "-t", "--test",
-        default=Config.dry,
+        default=config.dry,
         dest="dry",
         action="store_true",
         help="dry run, no changes are saved at the end (safe)")
@@ -481,17 +483,17 @@ if __name__ == '__main__':
         action="store_const",
         help="compare, then automatically pick the best format for a real run")
     ext_group.add_argument( "-O", "--overwrite",
-        default=Config.overwrite,
+        default=config.overwrite,
         dest="overwrite",
         action="store_true",
         help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
-        default=Config.force,
+        default=config.force,
         dest="force",
         action="store_true",
         help="ignore file errors when using overwrite (dangerous)")
     log_group.add_argument( "-v", "--verbose",
-        default=Config.loglevel,
+        default=config.loglevel,
         dest="loglevel",
         action="count",
         help="increase verbosity of progress messages, repeatable: -vvv")
@@ -501,38 +503,38 @@ if __name__ == '__main__':
         action="store_const",
         help="disable all progress messages")
     process_group.add_argument("--processes",
-        default=Config.processes,
+        default=config.processes,
         metavar="[1-32]",
         dest="processes",
         type=int,
         help="number of processes to spawn")
     process_group.add_argument( "--sequential",
-        default=Config.parallel,
+        default=config.parallel,
         dest="parallel",
         action="store_false",
         help="disable multiprocessing")
     ext_group.add_argument( "--zipext",
-        default=Config.zipext,
+        default=config.zipext,
         choices=('.cbz', '.zip'),
         metavar=".cbz/.zip",
         dest="zipext",
         type=str,
         help="extension to save the new archive with")
     parser.add_argument( "--zipcompress",
-        default=Config.compresslevel,
+        default=config.compresslevel,
         metavar="[0-9]",
         dest="compresslevel",
         type=int,
         help="compression level for the archive. 0 (default) recommended")
     parser.add_argument( "--fmt",
-        default=Config.formatname,
+        default=config.formatname,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="fmt",
         dest="formatname",
         type=str,
         help="format to convert images to: jpeg, webp, webpll, or png")
     parser.add_argument( "--quality",
-        default=Config.quality,
+        default=config.quality,
         choices=(range(1,101)),
         metavar="[0-95]",
         dest="quality",
@@ -540,22 +542,21 @@ if __name__ == '__main__':
         help="save quality for lossy formats. >90 not recommended")
     parser.add_argument( "--size",
         metavar="WidthxHeight",
-        default=Config.resolution,
+        default=config.resolution,
         dest="resolution",
         type=str,
         help="rescale images to the specified resolution")
     parser.add_argument( "-noup", "--noupscale",
-        default=Config.noupscale,
+        default=config.noupscale,
         dest="noupscale",
         action="store_true",
         help="disable upscaling with --size")
     parser.add_argument( "-bw", "--grayscale",
-        default=Config.grayscale,
+        default=config.grayscale,
         dest="grayscale",
         action="store_true",
         help="convert images to grayscale")
     args = parser.parse_args()
-    config = Config
     # this is probably a not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
