@@ -223,7 +223,7 @@ class Archive():
         self._log(f'Extracting: {self.filename}', progress=True)
         source_zip = ZipFile(self.filename)
         source_size = os.path.getsize(self.filename)
-        source_name = os.path.splitext(str(source_zip.filename))[0]
+        source_stem = os.path.splitext(str(source_zip.filename))[0]
         # extract all
         with TemporaryDirectory() as tempdir:
             source_zip.extractall(tempdir)
@@ -251,29 +251,29 @@ class Archive():
                     if reply not in ('y', 'yes'):
                         print('[!] Aborting')
                         exit(1)
-                new_name = self.filename
+                new_path = self.filename
             else:
-                new_name = f'{source_name} [reCBZ]{self.config.zipext}'
+                new_path = f'{source_stem} [reCBZ]{self.config.zipext}'
 
             if self.config.dry:
                 end_t = time.perf_counter()
                 elapsed = f'{end_t - start_t:.2f}s'
                 return (self.filename, elapsed, 'Dry run')
             # write to new local archive
-            if os.path.exists(new_name):
-                self._log(f'{new_name} exists, removing...')
-                os.remove(new_name)
-            new_zip = ZipFile(new_name,'w')
-            self._log(f'Write {self.config.zipext}: {new_name}', progress=True)
+            if os.path.exists(new_path):
+                self._log(f'{new_path} exists, removing...')
+                os.remove(new_path)
+            new_zip = ZipFile(new_path,'w')
+            self._log(f'Write {self.config.zipext}: {new_path}', progress=True)
             for source, dest in zip(imgs_abspath, imgs_names):
                 new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
             new_zip.close()
-            new_size = os.path.getsize(new_name)
+            new_size = os.path.getsize(new_path)
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
         diff = Archive._diff_summary_repack(source_size, new_size)
         self._log('', progress=True)
-        return new_name, elapsed, diff
+        return os.path.basename(new_path), elapsed, diff
 
 
     def _transform_img(self, source:str, dest=None, forceformat=None): #-> None | Str:
@@ -454,6 +454,7 @@ def print_title() -> None:
 
 
 def repack(filename:str, config:Config) -> None:
+    print('[!] Repacking', filename)
     results = Archive(filename, config).repack()
     print(f"┌─ '{results[0]}' completed in {results[1]}")
     print(f"└───■■ {results[2]} ■■")
