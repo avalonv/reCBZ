@@ -103,7 +103,7 @@ class Config():
         # number of images to sample in compare
         self.comparesamples:int = 10
         # dry run. archive won't be saved, even if overwrite is used
-        self.dry:bool = False
+        self.nowrite:bool = False
         # TODO finish implementings this
         # list of formats to exclude from auto and assist
         self.blacklistedfmts:tuple = (WebpLossless, WebpLossy)
@@ -220,7 +220,7 @@ class Archive():
 
     def repack(self) -> tuple:
         start_t = time.perf_counter()
-        self._log(f'Extracting: {self.filename}', progress=True)
+        self._log(f'Extracting: {self.filename}', progress=True) # TODO handle exception if file is not a zipfile
         source_zip = ZipFile(self.filename)
         source_size = os.path.getsize(self.filename)
         source_stem = os.path.splitext(str(source_zip.filename))[0]
@@ -255,7 +255,7 @@ class Archive():
             else:
                 new_path = f'{source_stem} [reCBZ]{self.config.zipext}'
 
-            if self.config.dry:
+            if self.config.nowrite:
                 end_t = time.perf_counter()
                 elapsed = f'{end_t - start_t:.2f}s'
                 return (self.filename, elapsed, 'Dry run')
@@ -491,7 +491,7 @@ def auto_repack(filename:str, config:Config) -> None:
 
 
 if __name__ == '__main__':
-    # o god who art in heaven please protect these anime girls
+    # o god who art in heaven please guard mine anime girls
     config = Config()
     import argparse
     parser = argparse.ArgumentParser(
@@ -501,9 +501,9 @@ if __name__ == '__main__':
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
-    parser.add_argument( "-t", "--test",
-        default=config.dry,
-        dest="dry",
+    parser.add_argument( "-nw", "--nowrite",
+        default=config.nowrite,
+        dest="nowrite",
         action="store_true",
         help="dry run, no changes are saved at the end of repacking (safe)")
     mode_group.add_argument( "-c", "--compare",
