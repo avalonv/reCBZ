@@ -616,9 +616,9 @@ if __name__ == '__main__':
         exit(1)
     # everything passed
     print_title()
-    mode:int = args.mode
+    mode = args.mode
     for filename in paths:
-        if mode == 0:
+        if mode is None:
             repack(filename, config)
         elif mode == 1:
             results = Archive(filename, config).analyze()
