@@ -85,58 +85,72 @@ class Png(LosslessFmt):
 class Config():
     # General options:
     # ---------------------------------------------------------------------
+    # whether to overwrite the original archive. dangerous
+    overwrite:bool = False
+    # ignore errors when overwrite is true. very dangerous
+    force:bool = False
+    # level of logging. 0 = quiet. 1 = overlapping progress report.
+    # 2 = streaming progress report. 3 = verbose messages. >3 = everything
+    loglevel:int = 1
     # whether to enable multiprocessing. fast, uses lots of memory
     parallel:bool = True
     # number of processes to spawn
     processes:int = 16
     # this only affects the extension name. will always be a zip archive
     zipext:str = '.cbz'
+    # compresslevel for the archive. barely affects file size (images are
+    # already compressed), but negatively impacts performance
+    compresslevel:int = 0
     # number of images to sample in compare
     comparesamples:int = 10
-    # level of logging. 0 = quiet. 1 = overlapping progress report.
-    # 2 = streaming progress report. 3 = verbose messages. >3 = everything
-    loglevel:int = 1
-    # whether to overwrite the original archive. dangerous
-    overwrite:bool = False
-    # ignore errors when overwrite is true. very dangerous
-    force = False
     # TODO finish implementings this
     # list of formats to exclude from auto and assist
     blacklistedfmts:tuple = (WebpLossless, WebpLossy)
 
     # Options which affect image quality and/or file size:
     # ---------------------------------------------------------------------
-    # new image width / height. set to 0 to preserve original dimensions
-    newsize:tuple = (0,0)
-    # set to True to not upscale images smaller than newsize
-    noupscale:bool = False
+    # default format to convert images to. leave empty to preserve original
+    formatname:str = ''
     # compression quality for lossy images
     quality:int = 80
-    # compresslevel for the archive. barely affects file size (images are
-    # already compressed), but negatively impacts performance
-    compresslevel:int = 0
-    # LANCZOS sacrifices performance for optimal upscale quality
-    resamplemethod = Image.Resampling.LANCZOS
+    # new image width / height. set to 0 to preserve original dimensions
+    resolution:str = "0x0"
+    # set to True to not upscale images smaller than newsize
+    noupscale:bool = False
     # whether to convert images to grayscale
     grayscale:bool = False
-    # default format to convert images to. leave empty to preserve original
-    defaultformat:str = ''
+    # LANCZOS sacrifices performance for optimal upscale quality
+    resamplemethod = Image.Resampling.LANCZOS
 
-    @property
-    def rescale(cls) -> bool:
-        if all(cls.newsize):
-            return True
-        else:
-            return False
 
     @property
     def get_targetformat(cls):
-        if cls.defaultformat in (None, ''): return None
-        elif cls.defaultformat == 'jpeg': return Jpeg
-        elif cls.defaultformat == 'png': return Png
-        elif cls.defaultformat == 'webp': return WebpLossy
-        elif cls.defaultformat == 'webpll': return WebpLossless
+        if cls.formatname in (None, ''): return None
+        elif cls.formatname == 'jpeg': return Jpeg
+        elif cls.formatname == 'png': return Png
+        elif cls.formatname == 'webp': return WebpLossy
+        elif cls.formatname == 'webpll': return WebpLossless
         else: return None
+
+
+    @property
+    def get_newsize(cls):
+        default_value = (0,0)
+        newsize = cls.resolution.lower().strip()
+        try:
+            newsize = tuple(map(int,newsize.split('x')))
+            assert len(newsize) == 2
+            return newsize
+        except (ValueError, AssertionError):
+            return default_value
+
+
+    @property
+    def rescale(cls) -> bool:
+        if all(cls.get_newsize):
+            return True
+        else:
+            return False
 
 
 class Archive():
@@ -292,7 +306,7 @@ class Archive():
             log_buff += '|trans: mode L\n'
             img = img.convert('L')
         if self.config.rescale:
-            log_buff += f'|trans: resize to {self.config.newsize}\n'
+            log_buff += f'|trans: resize to {self.config.get_newsize}\n'
             img = self._resize_img(img)
 
         # save
@@ -333,7 +347,7 @@ class Archive():
 
     def _resize_img(self, img:Image.Image) -> Image.Image:
         width, height = img.size
-        newsize = self.config.newsize
+        newsize = self.config.get_newsize
         # preserve aspect ratio for landscape images
         if width > height:
             newsize = newsize[::-1]
@@ -437,21 +451,21 @@ if __name__ == '__main__':
     mode = 0
     parser = argparse.ArgumentParser(prog="reCBZ.py")
     mode_group = parser.add_mutually_exclusive_group()
-    loglvl_group = parser.add_mutually_exclusive_group()
-    process_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
+    log_group = parser.add_mutually_exclusive_group()
+    process_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument( "-c", "--compare",
-        const=1,
-        dest="mode",
-        action="store_const",
-        help="do a dry run with each image format and print the results")
-    mode_group.add_argument( "-a", "--assist",
         const=2,
         dest="mode",
         action="store_const",
-        help="compare, then ask which format to use for a real run")
-    mode_group.add_argument( "-aa" ,"--auto",
+        help="test a small sample with all formats and print the results (safe)")
+    mode_group.add_argument( "-a", "--assist",
         const=3,
+        dest="mode",
+        action="store_const",
+        help="compare, then ask which format to use for a real run")
+    mode_group.add_argument( "-A" ,"--auto",
+        const=4,
         dest="mode",
         action="store_const",
         help="compare, then automatically pick the best format for a real run")
@@ -459,18 +473,18 @@ if __name__ == '__main__':
         default=Config.overwrite,
         dest="overwrite",
         action="store_true",
-        help="overwrite the original archive.")
+        help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
         default=Config.force,
         dest="force",
         action="store_true",
-        help="ignore errors when using overwrite (dangerous)")
-    loglvl_group.add_argument( "-v", "--verbose",
+        help="ignore file errors when using overwrite (dangerous)")
+    log_group.add_argument( "-v", "--verbose",
         default=Config.loglevel,
         dest="loglevel",
         action="count",
-        help="increase verbosity of progress messages. repeat for logs")
-    loglvl_group.add_argument( "-s", "--silent",
+        help="increase verbosity of progress messages, repeatable: -vvv")
+    log_group.add_argument( "-s", "--silent",
         const=0,
         dest="loglevel",
         action="store_const",
@@ -485,7 +499,7 @@ if __name__ == '__main__':
         default=Config.parallel,
         dest="parallel",
         action="store_false",
-        help="disable multiprocessing, process one image at a time")
+        help="disable multiprocessing")
     ext_group.add_argument( "--zipext",
         default=Config.zipext,
         choices=('.cbz', '.zip'),
@@ -498,9 +512,9 @@ if __name__ == '__main__':
         metavar="[0-9]",
         dest="compresslevel",
         type=int,
-        help="compression level for the archive. default (0) is recommended")
+        help="compression level for the archive. 0 (default) recommended")
     parser.add_argument( "--fmt",
-        default=Config.defaultformat,
+        default=Config.formatname,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="fmt",
         dest="formatname",
@@ -512,18 +526,18 @@ if __name__ == '__main__':
         metavar="[0-95]",
         dest="quality",
         type=int,
-        help="image save quality for lossy formats")
-    parser.add_argument( "--resize",
+        help="save quality for lossy formats. >90 not recommended")
+    parser.add_argument( "--size",
         metavar="WidthxHeight",
-        default=Config.newsize,
-        dest="newsize",
+        default=Config.resolution,
+        dest="resolution",
         type=str,
         help="rescale images to the specified resolution")
     parser.add_argument( "-noup", "--noupscale",
         default=Config.noupscale,
         dest="noupscale",
         action="store_true",
-        help="disable upscaling with --resize")
+        help="disable upscaling with --size")
     parser.add_argument( "-bw", "--grayscale",
         default=Config.grayscale,
         dest="grayscale",
@@ -534,15 +548,7 @@ if __name__ == '__main__':
     # this is probably a not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
-        if key == 'newsize':
-            try:
-                assert type(val) is str
-            except AssertionError:
-                continue
-            val = val.lower().strip()
-            resolution = tuple(map(int,val.split('x')))
-            config.newsize = resolution
-        elif key in config.__dict__.keys():
+        if key in config.__dict__.keys():
             setattr(config, key, val)
     print()
     print()
