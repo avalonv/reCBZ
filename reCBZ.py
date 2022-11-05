@@ -15,9 +15,6 @@ except ModuleNotFoundError:
     exit(1)
 
 # TODO:
-# may prove useful for determing format of the images in the archive, although
-# its too new (python 3.11) at the moment:
-# https://docs.python.org/3/library/zipfile.html#zipfile.Path.suffixes
 # consider replacing os.path with pathlib, as it might be simpler:
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
@@ -83,45 +80,74 @@ class Png(LosslessFmt):
 
 
 class Config():
-    # General options:
-    # ---------------------------------------------------------------------
-    # whether to enable multiprocessing. fast, uses lots of memory
-    parallel:bool = True
-    # number of processes to spawn
-    processes:int = 16
-    # this only affects the extension name. will always be a zip archive
-    zipext:str = '.cbz'
-    # number of images to sample in compare
-    comparesamples:int = 10
-    # level of logging. 0 = quiet. 1 = overlapping progress report.
-    # 2 = streaming progress report. 3 = verbose messages. >3 = everything
-    loglevel:int = 1
-    # whether to overwrite the original archive. dangerous
-    overwrite:bool = False
-    # ignore errors when overwrite is true. very dangerous
-    force = False
+    def __init__(self):
+        # General options:
+        # ---------------------------------------------------------------------
+        # whether to overwrite the original archive. dangerous
+        self.overwrite:bool = False
+        # ignore errors when overwrite is true. very dangerous
+        self.force:bool = False
+        # level of logging. 0 = quiet. 1 = overlapping progress report.
+        # 2 = streaming progress report. 3 = verbose messages. >3 = everything
+        self.loglevel:int = 1
+        # whether to enable multiprocessing. fast, uses lots of memory
+        self.parallel:bool = True
+        # number of processes to spawn
+        self.processes:int = 16
+        # this only affects the extension name. will always be a zip archive
+        self.zipext:str = '.cbz'
+        # compresslevel for the archive. barely affects file size (images are
+        # already compressed), but negatively impacts performance
+        self.compresslevel:int = 0
+        # number of images to sample in compare
+        self.comparesamples:int = 10
+        # dry run. archive won't be saved, even if overwrite is used
+        self.dry:bool = False
+        # TODO finish implementings this
+        # list of formats to exclude from auto and assist
+        self.blacklistedfmts:tuple = (WebpLossless, WebpLossy)
 
-    # Options which affect image quality and/or file size:
-    # ---------------------------------------------------------------------
-    # new image width / height. set to 0 to preserve original dimensions
-    newsize = (0,0)
-    # set to True to not upscale images smaller than newsize
-    noupscale:bool = False
-    # compression quality for lossy images
-    quality:int = 80
-    # compresslevel for the archive. barely affects file size (images are
-    # already compressed), but negatively impacts performance
-    compresslevel:int = 0
-    # LANCZOS sacrifices performance for optimal upscale quality
-    resamplemethod = Image.Resampling.LANCZOS
-    # whether to convert images to grayscale
-    grayscale:bool = False
-    # format to convert images to
-    targetformat = Png
+        # Options which affect image quality and/or file size:
+        # ---------------------------------------------------------------------
+        # default format to convert images to. leave empty to preserve original
+        self.formatname:str = ''
+        # compression quality for lossy images
+        self.quality:int = 80
+        # new image width / height. set to 0 to preserve original dimensions
+        self.resolution:str = "0x0"
+        # set to True to not upscale images smaller than newsize
+        self.noupscale:bool = False
+        # whether to convert images to grayscale
+        self.grayscale:bool = False
+        # LANCZOS sacrifices performance for optimal upscale quality
+        self.resamplemethod = Image.Resampling.LANCZOS
+
 
     @property
-    def rescale(cls) -> bool:
-        if all(cls.newsize):
+    def get_targetformat(self):
+        if self.formatname in (None, ''): return None
+        elif self.formatname == 'jpeg': return Jpeg
+        elif self.formatname == 'png': return Png
+        elif self.formatname == 'webp': return WebpLossy
+        elif self.formatname == 'webpll': return WebpLossless
+        else: return None
+
+
+    @property
+    def get_newsize(self):
+        default_value = (0,0)
+        newsize = self.resolution.lower().strip()
+        try:
+            newsize = tuple(map(int,newsize.split('x')))
+            assert len(newsize) == 2
+            return newsize
+        except (ValueError, AssertionError):
+            return default_value
+
+
+    @property
+    def rescale(self) -> bool:
+        if all(self.get_newsize):
             return True
         else:
             return False
@@ -163,8 +189,9 @@ class Archive():
                             in os.walk(tempdir) for f in fnames]
             nbytes = sum(os.path.getsize(f) for f in sample_imgs)
             sample_fmt = self._determine_format(Image.open(sample_imgs[0]))
-            size_totals.append((nbytes,f'{sample_fmt.desc} ({Archive.source_id})'))
-
+            size_totals.append((nbytes,
+                                f'{sample_fmt.desc} ({Archive.source_id})',
+                                sample_fmt.name))
             # also compute the size of each valid format after converting
             for fmt in self.valid_formats:
                 fmtdir = os.path.join(tempdir, fmt.name)
@@ -177,16 +204,17 @@ class Archive():
                     results = map(func, sample_imgs)
                 converted_imgs = [path for path in results if path]
                 nbytes = sum(os.path.getsize(f) for f in converted_imgs)
-                size_totals.append((nbytes,fmt.desc))
+                size_totals.append((nbytes, fmt.desc, fmt.name))
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
         size_totals = tuple(sorted(size_totals))
-        suggested_fmt = size_totals[0][1]
         summary = Archive._diff_summary_analyze(size_totals, sample_size)
+        options_dic = {i : total[2] for i, total in enumerate(size_totals)}
+        suggested_fmt = {"desc": size_totals[0][1], "name": size_totals[0][2]}
         self._log(str(size_totals))
         self._log('', progress=True)
-        return suggested_fmt, summary
+        return summary, options_dic, suggested_fmt
 
 
     def repack(self) -> tuple:
@@ -226,6 +254,10 @@ class Archive():
             else:
                 new_name = f'{source_name} [reCBZ]{self.config.zipext}'
 
+            if self.config.dry:
+                end_t = time.perf_counter()
+                elapsed = f'{end_t - start_t:.2f}s'
+                return (self.filename, elapsed, 'Dry run')
             # write to new local archive
             if os.path.exists(new_name):
                 self._log(f'{new_name} exists, removing...')
@@ -264,8 +296,8 @@ class Archive():
             return None
         if forceformat:
             new_fmt = forceformat
-        elif self.config.targetformat is not None:
-            new_fmt = self.config.targetformat
+        elif self.config.get_targetformat is not None:
+            new_fmt = self.config.get_targetformat
         else:
             new_fmt = source_fmt
 
@@ -280,7 +312,7 @@ class Archive():
             log_buff += '|trans: mode L\n'
             img = img.convert('L')
         if self.config.rescale:
-            log_buff += f'|trans: resize to {self.config.newsize}\n'
+            log_buff += f'|trans: resize to {self.config.get_newsize}\n'
             img = self._resize_img(img)
 
         # save
@@ -321,7 +353,7 @@ class Archive():
 
     def _resize_img(self, img:Image.Image) -> Image.Image:
         width, height = img.size
-        newsize = self.config.newsize
+        newsize = self.config.get_newsize
         # preserve aspect ratio for landscape images
         if width > height:
             newsize = newsize[::-1]
@@ -408,33 +440,184 @@ class Archive():
         return summary[0:-1] # strip last newline
 
 
-# class ArchiveList():
-#     def __init__(self, )
+def print_title() -> None:
+    align = int(TERM_COLUMNS / 2) - 11
+    if align > 21: align = 21
+    if align + 22 > TERM_COLUMNS or align < 0:
+        align = 0
+    align = align * ' '
+    title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
+                       f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
+                       f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
+    print(title_multiline)
+
+
+def repack(filename:str, config:Config) -> None:
+    results = Archive(filename, config).repack()
+    print(f"┌─ '{results[0]}' completed in {results[1]}")
+    print(f"└───■■ {results[2]} ■■")
+
+
+def assist_repack(filename:str, config:Config) -> None:
+    results = Archive(filename, config).analyze()
+    print(results[0])
+    options = results[1]
+    metavar = f'[1-{len(options)}]'
+    while True:
+        try:
+            reply = int(input(f"■─■ Proceed with {metavar}: ")) - 1
+            selection = options[reply]
+            break
+        except (ValueError, KeyError):
+            print('[!] Ctrl+C to cancel')
+            continue
+        except KeyboardInterrupt:
+            print('[!] Aborting')
+            exit(1)
+    print('would have selected: ', selection)
+    config.formatname = selection
+    repack(filename, config)
+
+
+def auto_repack(filename:str, config:Config) -> None:
+    selection = Archive(filename, config).analyze()[2]
+    fmt_name = selection['name']
+    fmt_desc = selection['desc']
+    print('[!] Proceeding with', fmt_desc)
+    config.formatname = fmt_name
+    repack(filename, config)
+
 
 if __name__ == '__main__':
-    def print_title() -> None:
-        align = int(TERM_COLUMNS / 2) - 11
-        if align > 21: align = 21
-        if align + 22 > TERM_COLUMNS or align < 0:
-            align = 0
-        align = align * ' '
-        title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
-                           f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
-                           f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
-        print(title_multiline)
-
-    config = Config()
-    if len(argv) > 1 and os.path.isfile(argv[1]):
-        soloarchive = Archive(argv[1], config)
-    else:
-        print('BAD!!! >:(')
-        exit(1)
+    # o god who art in heaven please protect these anime girls
     print_title()
-    if len(argv) > 2 and argv[2] == '-a':
-        results = soloarchive.analyze()
-        print(results[1])
-        print(f'Suggested format: {results[0]}')
-    else:
-        results = soloarchive.repack()
-        print(f"┌─ '{results[0]}' completed in {results[1]}")
-        print(f"└───■■ {results[2]} ■■")
+    config = Config()
+    import argparse
+    parser = argparse.ArgumentParser(
+            prog="reCBZ.py",
+            usage='%(prog)s [options] filetorepack.cbz')
+    mode_group = parser.add_mutually_exclusive_group()
+    ext_group = parser.add_mutually_exclusive_group()
+    log_group = parser.add_mutually_exclusive_group()
+    process_group = parser.add_mutually_exclusive_group()
+    parser.add_argument( "-t", "--test",
+        default=config.dry,
+        dest="dry",
+        action="store_true",
+        help="dry run, no changes are saved at the end of repacking (safe)")
+    mode_group.add_argument( "-c", "--compare",
+        const=1,
+        dest="mode",
+        action="store_const",
+        help="test a small sample with all formats and print the results (safe)")
+    mode_group.add_argument( "-a", "--assist",
+        const=2,
+        dest="mode",
+        action="store_const",
+        help="compare, then ask which format to use for a real run")
+    mode_group.add_argument( "-A" ,"--auto",
+        const=3,
+        dest="mode",
+        action="store_const",
+        help="compare, then automatically picks the best format for a real run")
+    ext_group.add_argument( "-O", "--overwrite",
+        default=config.overwrite,
+        dest="overwrite",
+        action="store_true",
+        help="overwrite the original archive")
+    parser.add_argument( "-F", "--force",
+        default=config.force,
+        dest="force",
+        action="store_true",
+        help="ignore file errors when using overwrite (dangerous)")
+    log_group.add_argument( "-v", "--verbose",
+        default=config.loglevel,
+        dest="loglevel",
+        action="count",
+        help="increase verbosity of progress messages, repeatable: -vvv")
+    log_group.add_argument( "-s", "--silent",
+        const=0,
+        dest="loglevel",
+        action="store_const",
+        help="disable all progress messages")
+    process_group.add_argument("--processes",
+        default=config.processes,
+        choices=(range(1,33)),
+        metavar="[1-32]",
+        dest="processes",
+        type=int,
+        help="number of processes to spawn")
+    process_group.add_argument( "--sequential",
+        default=config.parallel,
+        dest="parallel",
+        action="store_false",
+        help="disable multiprocessing")
+    ext_group.add_argument( "--zipext",
+        default=config.zipext,
+        choices=('.cbz', '.zip'),
+        metavar=".cbz/.zip",
+        dest="zipext",
+        type=str,
+        help="extension to save the new archive with")
+    parser.add_argument( "--zipcompress",
+        default=config.compresslevel,
+        choices=(range(10)),
+        metavar="[0-9]",
+        dest="compresslevel",
+        type=int,
+        help="compression level for the archive. 0 (default) recommended")
+    parser.add_argument( "--fmt",
+        default=config.formatname,
+        choices=('jpeg', 'png', 'webp', 'webpll'),
+        metavar="fmt",
+        dest="formatname",
+        type=str,
+        help="format to convert images to: jpeg, webp, webpll, or png")
+    parser.add_argument( "--quality",
+        default=config.quality,
+        choices=(range(1,101)),
+        metavar="[0-95]",
+        dest="quality",
+        type=int,
+        help="save quality for lossy formats. >90 not recommended")
+    parser.add_argument( "--size",
+        metavar="WidthxHeight",
+        default=config.resolution,
+        dest="resolution",
+        type=str,
+        help="rescale images to the specified resolution")
+    parser.add_argument( "-noup", "--noupscale",
+        default=config.noupscale,
+        dest="noupscale",
+        action="store_true",
+        help="disable upscaling with --size")
+    parser.add_argument( "-bw", "--grayscale",
+        default=config.grayscale,
+        dest="grayscale",
+        action="store_true",
+        help="convert images to grayscale")
+    args, unknown_args = parser.parse_known_args()
+    # this is probably a not the most pythonic way to do this
+    # I'm sorry guido-san...
+    for key, val in args.__dict__.items():
+        if key in config.__dict__.keys():
+            setattr(config, key, val)
+    paths = []
+    for arg in unknown_args:
+        if os.path.isfile(arg):
+            paths.append(arg)
+        else:
+            parser.print_help()
+            print(f'\nunknown file or option: {arg}')
+            exit(1)
+    mode:int = args.mode
+    for filename in paths:
+        if mode == 0:
+            repack(filename, config)
+        elif mode == 1:
+            results = Archive(filename, config).analyze()
+            print(results[0])
+        elif mode == 2:
+            assist_repack(filename, config)
+        elif mode == 3:
+            auto_repack(filename, config)
