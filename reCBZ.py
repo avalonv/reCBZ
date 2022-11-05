@@ -3,7 +3,7 @@
 from sys import argv, exit
 import time
 import os
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
 from functools import partial
@@ -169,68 +169,22 @@ class Archive():
         self.valid_formats:tuple = (Png, Jpeg, WebpLossy, WebpLossless)
 
 
-    def analyze(self) -> tuple:
-        self._log(f'Extracting: {self.filename}', progress=True)
-        source_zip = ZipFile(self.filename)
-        compressed_files = source_zip.namelist()
-
-        # select x images from the middle of the archive, in increments of two
-        sample_size = self.conf.comparesamples
-        if sample_size * 2 > len(compressed_files):
-            raise ValueError(f"{self.filename} is smaller than sample_size * 2")
-        delta = int(len(compressed_files) / 2)
-        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
-
-        # extract them and compute their size
-        size_totals = []
-        with TemporaryDirectory() as tempdir:
-            for name in sample_imgs:
-                source_zip.extract(name, tempdir)
-            source_zip.close()
-            # https://stackoverflow.com/a/3207973/8225672 absolutely nightmarish
-            # but this is the only way to avoid problems with subfolders
-            sample_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
-                            in os.walk(tempdir) for f in fnames]
-            nbytes = sum(os.path.getsize(f) for f in sample_imgs)
-            sample_fmt = self._determine_format(Image.open(sample_imgs[0]))
-            size_totals.append((nbytes,
-                                f'{sample_fmt.desc} ({Archive.source_id})',
-                                sample_fmt.name))
-            # also compute the size of each valid format after converting
-            for fmt in self.valid_formats:
-                fmtdir = os.path.join(tempdir, fmt.name)
-                os.mkdir(fmtdir)
-                func = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
-                if self.conf.parallel:
-                    with Pool(processes=sample_size) as pool:
-                        results = pool.map(func, sample_imgs)
-                else:
-                    results = map(func, sample_imgs)
-                converted_imgs = [path for path in results if path]
-                nbytes = sum(os.path.getsize(f) for f in converted_imgs)
-                size_totals.append((nbytes, fmt.desc, fmt.name))
-
-        # finally, compare
-        # in multidepth lists, sorted compares the first element by default :)
-        size_totals = tuple(sorted(size_totals))
-        summary = Archive._diff_summary_analyze(size_totals, sample_size)
-        options_dic = {i : total[2] for i, total in enumerate(size_totals)}
-        suggested_fmt = {"desc": size_totals[0][1], "name": size_totals[0][2]}
-        self._log(str(size_totals))
-        self._log('', progress=True)
-        return summary, options_dic, suggested_fmt
-
-
     def repack(self) -> tuple:
         start_t = time.perf_counter()
         self._log(f'Extracting: {self.filename}', progress=True) # TODO handle exception if file is not a zipfile
-        source_zip = ZipFile(self.filename)
+        try:
+            source_zip = ZipFile(self.filename)
+        except BadZipFile as err:
+            print(f"[Fatal] '{self.filename}': not a zip file")
+            exit(2)
         source_size = os.path.getsize(self.filename)
         source_stem = os.path.splitext(str(source_zip.filename))[0]
         # extract all
         with TemporaryDirectory() as tempdir:
             source_zip.extractall(tempdir)
             source_zip.close()
+            # https://stackoverflow.com/a/3207973/8225672 absolutely nightmarish
+            # but this is the only way to avoid problems with subfolders
             source_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
                             in os.walk(tempdir) for f in fnames]
 
@@ -277,6 +231,56 @@ class Archive():
         diff = Archive._diff_summary_repack(source_size, new_size)
         self._log('', progress=True)
         return os.path.basename(new_path), elapsed, diff
+
+
+    def analyze(self) -> tuple:
+        self._log(f'Extracting: {self.filename}', progress=True)
+        source_zip = ZipFile(self.filename)
+        compressed_files = source_zip.namelist()
+
+        # select x images from the middle of the archive, in increments of two
+        sample_size = self.conf.comparesamples
+        if sample_size * 2 > len(compressed_files):
+            raise ValueError(f"{self.filename} is smaller than sample_size * 2")
+        delta = int(len(compressed_files) / 2)
+        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
+
+        # extract them and compute their size
+        size_totals = []
+        with TemporaryDirectory() as tempdir:
+            for name in sample_imgs:
+                source_zip.extract(name, tempdir)
+            source_zip.close()
+            sample_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
+                            in os.walk(tempdir) for f in fnames]
+            nbytes = sum(os.path.getsize(f) for f in sample_imgs)
+            sample_fmt = self._determine_format(Image.open(sample_imgs[0]))
+            size_totals.append((nbytes,
+                                f'{sample_fmt.desc} ({Archive.source_id})',
+                                sample_fmt.name))
+            # also compute the size of each valid format after converting
+            for fmt in self.valid_formats:
+                fmtdir = os.path.join(tempdir, fmt.name)
+                os.mkdir(fmtdir)
+                func = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
+                if self.conf.parallel:
+                    with Pool(processes=sample_size) as pool:
+                        results = pool.map(func, sample_imgs)
+                else:
+                    results = map(func, sample_imgs)
+                converted_imgs = [path for path in results if path]
+                nbytes = sum(os.path.getsize(f) for f in converted_imgs)
+                size_totals.append((nbytes, fmt.desc, fmt.name))
+
+        # finally, compare
+        # in multidepth lists, sorted compares the first element by default :)
+        size_totals = tuple(sorted(size_totals))
+        summary = Archive._diff_summary_analyze(size_totals, sample_size)
+        options_dic = {i : total[2] for i, total in enumerate(size_totals)}
+        suggested_fmt = {"desc": size_totals[0][1], "name": size_totals[0][2]}
+        self._log(str(size_totals))
+        self._log('', progress=True)
+        return summary, options_dic, suggested_fmt
 
 
     def _transform_img(self, source:str, dest=None, forceformat=None): #-> None | Str:
