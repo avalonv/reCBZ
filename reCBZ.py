@@ -439,6 +439,7 @@ if __name__ == '__main__':
     mode_group = parser.add_mutually_exclusive_group()
     loglvl_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
+    ext_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument( "-c", "--compare",
         const=1,
         dest="mode",
@@ -454,7 +455,7 @@ if __name__ == '__main__':
         dest="mode",
         action="store_const",
         help="compare, then automatically pick the best format for a real run")
-    parser.add_argument( "-O", "--overwrite",
+    ext_group.add_argument( "-O", "--overwrite",
         default=Config.overwrite,
         dest="overwrite",
         action="store_true",
@@ -485,7 +486,7 @@ if __name__ == '__main__':
         dest="parallel",
         action="store_false",
         help="disable multiprocessing, process one image at a time")
-    parser.add_argument( "--zipext",
+    ext_group.add_argument( "--zipext",
         default=Config.zipext,
         choices=('.cbz', '.zip'),
         metavar=".cbz/.zip",
@@ -507,7 +508,7 @@ if __name__ == '__main__':
         help="format to convert images to: jpeg, webp, webpll, or png")
     parser.add_argument( "--quality",
         default=Config.quality,
-        choices=(range(100)),
+        choices=(range(1,101)),
         metavar="[0-95]",
         dest="quality",
         type=int,
