@@ -163,8 +163,8 @@ class Archive():
     def __init__(self, filename:str, config:Config):
         if os.path.isfile(filename): self.filename:str = filename
         else: raise ValueError(f"{filename}: invalid path")
-        self.config:Config = config
-        LossyFmt.quality = self.config.quality
+        self.conf:Config = config
+        LossyFmt.quality = self.conf.quality
         self.valid_formats:tuple = (Png, Jpeg, WebpLossy, WebpLossless)
 
 
@@ -174,7 +174,7 @@ class Archive():
         compressed_files = source_zip.namelist()
 
         # select x images from the middle of the archive, in increments of two
-        sample_size = self.config.comparesamples
+        sample_size = self.conf.comparesamples
         if sample_size * 2 > len(compressed_files):
             raise ValueError(f"{self.filename} is smaller than sample_size * 2")
         delta = int(len(compressed_files) / 2)
@@ -200,7 +200,7 @@ class Archive():
                 fmtdir = os.path.join(tempdir, fmt.name)
                 os.mkdir(fmtdir)
                 func = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
-                if self.config.parallel:
+                if self.conf.parallel:
                     with Pool(processes=sample_size) as pool:
                         results = pool.map(func, sample_imgs)
                 else:
@@ -234,8 +234,8 @@ class Archive():
                             in os.walk(tempdir) for f in fnames]
 
             # process images in place
-            if self.config.parallel:
-                with Pool(processes=self.config.processes) as pool:
+            if self.conf.parallel:
+                with Pool(processes=self.conf.processes) as pool:
                     results = pool.map(self._transform_img, source_imgs)
             else:
                 results = map(self._transform_img, source_imgs)
@@ -247,17 +247,17 @@ class Archive():
             if discarded > 0:
                 self._log('', progress=True)
                 print(f"[!] {discarded} files had errors and had to be discarded.")
-            if self.config.overwrite:
-                if discarded and not self.config.force:
+            if self.conf.overwrite:
+                if discarded and not self.conf.force:
                     reply = input("■─■ Proceed with overwriting? [y/n]").lower()
                     if reply not in ('y', 'yes'):
                         print('[!] Aborting')
                         exit(1)
                 new_path = self.filename
             else:
-                new_path = f'{source_stem} [reCBZ]{self.config.zipext}'
+                new_path = f'{source_stem} [reCBZ]{self.conf.zipext}'
 
-            if self.config.nowrite:
+            if self.conf.nowrite:
                 end_t = time.perf_counter()
                 elapsed = f'{end_t - start_t:.2f}s'
                 return (self.filename, elapsed, 'Dry run')
@@ -266,9 +266,9 @@ class Archive():
                 self._log(f'{new_path} exists, removing...')
                 os.remove(new_path)
             new_zip = ZipFile(new_path,'w')
-            self._log(f'Write {self.config.zipext}: {new_path}', progress=True)
+            self._log(f'Write {self.conf.zipext}: {new_path}', progress=True)
             for source, dest in zip(imgs_abspath, imgs_names):
-                new_zip.write(source, dest, ZIP_DEFLATED, self.config.compresslevel)
+                new_zip.write(source, dest, ZIP_DEFLATED, self.conf.compresslevel)
             new_zip.close()
             new_size = os.path.getsize(new_path)
         end_t = time.perf_counter()
@@ -299,8 +299,8 @@ class Archive():
             return None
         if forceformat:
             new_fmt = forceformat
-        elif self.config.get_targetformat is not None:
-            new_fmt = self.config.get_targetformat
+        elif self.conf.get_targetformat is not None:
+            new_fmt = self.conf.get_targetformat
         else:
             new_fmt = source_fmt
 
@@ -311,11 +311,11 @@ class Archive():
               img = img.convert('RGB')
 
         # transform
-        if self.config.grayscale:
+        if self.conf.grayscale:
             log_buff += '|trans: mode L\n'
             img = img.convert('L')
-        if self.config.rescale:
-            log_buff += f'|trans: resize to {self.config.get_newsize}\n'
+        if self.conf.rescale:
+            log_buff += f'|trans: resize to {self.conf.get_newsize}\n'
             img = self._resize_img(img)
 
         # save
@@ -356,32 +356,32 @@ class Archive():
 
     def _resize_img(self, img:Image.Image) -> Image.Image:
         width, height = img.size
-        newsize = self.config.get_newsize
+        newsize = self.conf.get_newsize
         # preserve aspect ratio for landscape images
         if width > height:
             newsize = newsize[::-1]
         n_width, n_height = newsize
         # downscaling
         if (width > n_width) and (height > n_height):
-            img = img.resize((newsize), self.config.resamplemethod)
+            img = img.resize((newsize), self.conf.resamplemethod)
         # upscaling
-        elif not self.config.noupscale:
-            img = img.resize((newsize), self.config.resamplemethod)
+        elif not self.conf.noupscale:
+            img = img.resize((newsize), self.conf.resamplemethod)
         return img
 
 
     def _log(self, msg:str, progress=False) -> None:
-        if self.config.loglevel == -1:
+        if self.conf.loglevel == -1:
             return
-        elif self.config.loglevel > 2:
+        elif self.conf.loglevel > 2:
             print(msg, flush=True)
-        elif self.config.loglevel == 2 and not progress:
+        elif self.conf.loglevel == 2 and not progress:
             print(msg, flush=True)
-        elif self.config.loglevel == 1 and progress:
+        elif self.conf.loglevel == 1 and progress:
             msg = '[*] ' + msg
             msg = msg[:max_width]
             print(f'{msg: <{max_width}}', end='\n', flush=True)
-        elif self.config.loglevel == 0 and progress:
+        elif self.conf.loglevel == 0 and progress:
             # # no newline (i.e. overwrite line)
             msg = '[*] ' + msg
             msg = msg[:max_width]
