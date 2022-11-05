@@ -14,6 +14,8 @@ except ModuleNotFoundError:
     print("Please install Pillow!\nrun 'pip3 install pillow'")
     exit(1)
 
+README=('https://github.com/avalonv/reCBZ/tree/master/README.md')
+
 # TODO:
 # include docstrings
 # consider replacing os.path with pathlib, as it might be simpler:
@@ -494,9 +496,10 @@ if __name__ == '__main__':
     # o god who art in heaven please guard mine anime girls
     config = Config()
     import argparse
+    usage_str = f"%(prog)s [options] files.cbz\ndocs: {README}"
     parser = argparse.ArgumentParser(
             prog="reCBZ.py",
-            usage='%(prog)s [options] filetorepack.cbz')
+            usage=usage_str)
     mode_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
