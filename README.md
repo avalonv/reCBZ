@@ -8,51 +8,54 @@ Note that due to how lossy images formats like JPEG/WebP work, repeatedly overwr
 
 Although this was explicitly created with .cbz files in mind, it can be used to pack and convert images in general, with some caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be overwritten).
 
-This program should work on Windows, MacOS, and Linux. Image operations are done through [Pillow](https://github.com/python-pillow/Pillow), the rest uses the standard Python library.
+This program should work on Windows, MacOS, and Linux. Image operations are done in parallel through [Pillow](https://github.com/python-pillow/Pillow), the rest uses the standard Python library.
 
 Lastly, this program is new and can lead to unintended loss of data if used carelessly. It's recommended to have a backup somewhere when using --overwrite.
 
 ## Usage
-Input: a .zip or .cbz archive
 
-Output: hopefully, a smaller .cbz or .zip archive
 
+Accepts a valid .cbz or .zip file, or a collection of files. Returns an optmized copy based on current settings. See options for defaults.
+
+The output file(s) will always be saved as `filename [reCBZ].extension`, unless **--overwrite** is specified.
+  
 ### MacOS/Linux:  
 
-`./reCBZ.py [options] [input file]`
-
+    ./reCBZ.py [options] files
 ### Windows:  
 
-`python reCBZ.py [options] [input file]`
+    python reCBZ.py [options] files
 
-The output is always written as `filename [reCBZ].extension` unless **--overwrite** is used.
 
 ### General options (no effect on file size):
 <details>
   <summary>Click to expand</summary>
 <br>
 
+**--nowrite**  **-nw**  
+<ul>Dry run. The repacked archive isn't saved at the end, making other options completely safe.</ul>
+
 **--compare**  **-c**   
-<ul>Does a (safe) dry run with a small sample of images, converting them to available formats using current settings, then displays a summary of the disk usage for each. Can only be used with one archive at a time.</ul>
+<ul>Does a dry run with a small sample of images, converting them to available formats using current settings, then displays a disk usage summary for each.</ul>
 
 **--assist**  **-a**
-<ul>Same as <b>--compare</b>, except it then prompts you which format to convert the rest of the archive to.</ul>
+<ul>Same as <b>--compare</b>, except it then asks you which format to use for a real run.</ul>
 
-**--auto**  **-aa**  
-<ul>Same as <b>--compare</b>, except it automatically picks the best/smallest format and converts the rest of the archive with it.</ul> 
+**--auto**  **-A**  
+<ul>Same as <b>--compare</b>, except it automatically picks the best/smallest format for a real run.</ul> 
 
-<ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. If you wish to exclude this format, you can add <b>--nowebp</b> (TODO/Unimplemented).</ul>
+<ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. <s>If you wish to exclude this format, you can add <b>--nowebp</b></s> (TODO/Unimplemented).</ul>
 
 **--overwrite**  **-O**  
-<ul>Overwrite the original archive. Specifically, it will be converted to a valid .cbz structure, meaning that non-image files will be discarded, and the folder structure will be flattened, any images sharing a name will be lost.   Make sure you understand what this means before using this.</ul>
+<ul>Overwrite the original archive. Specifically, it will be converted to a valid .cbz structure, meaning that non-image files will be discarded, and the folder structure will be flattened, any images sharing a name will be lost. Make sure you understand what this means before using this.</ul>
 
-~~**--recursive**  **-R**~~  (TODO/Unimplemented)  
+~~**--recursive**  **-R**~~  (TODO/Unimplemented)  see [#examples](#examples) 
 <ul>Search all subfolders in the current path for .cbz or .zip files to convert.</ul>
 
 <ul><b>Exercise caution when using with --overwrite, may lead to loss of data.</b></ul>
 
 **--verbose**  **-v**  
-<ul>More progress messages. Can be repeated for debug output.</ul>
+<ul>More progress messages. Can be repeated (-vv) for debug output.</ul>
 
 **--silent**  **-s**   
 <ul>No progress messages.</ul>
@@ -62,17 +65,15 @@ default: 16
 <ul>Number of processes to spawn. This will only improve performance if your CPU has cores to spare (it's not magic!). Lower this to 2 or 4 if you're experiencing high memory usage.</ul>
 
 **--sequential**  
-<ul>Disable multiprocessing altogether. Use this only if you're still experiencing memory issues, or when debugging.</ul>
+<ul>Disable multiprocessing altogether. Use this only if you're still experiencing memory issues, or for debugging.</ul>
 
 **--zipext** *.cbz* or *.zip*  
 default: .cbz  
 <ul>Extension for the new archive, signals to the OS which mimetype to open files with (they're the same internally).</ul>
 
-<ul>Ignored when <b>--overwrite</b> is present.</ul>
-
 **--zipcompress** *0 - 9*  
 default: 0  
-<ul>Compression strength for the archive (after images have been converted). The default (0) is <i>strongly</i> recommended, setting it to higher values is nearly always counterproductive, it will barely affect archive size (if at all), as the images are already compressed, but will significantly increase the time it takes to open it.</ul>
+<ul>Compression strength for the archive (after images have been converted). The default (0) is <i>strongly</i> recommended, setting it to higher values is nearly always counterproductive, it will barely affect archive size (if at all) as the images are already compressed, but will significantly increase the time it takes to open it.</ul>
 
 </details>
 
@@ -83,7 +84,7 @@ default: 0
 
 **--fmt** *format*  
 default: same as source  
-<ul>Image format to convert images to. One of: <i>jpeg, webp, webpll,</i> or <i>png</i> — webpll stands for lossless. Try <b>--compare</b> to get an idea of how they compare, this will vary. Omitting this option will preserve the original format.</ul>
+<ul>Image format to convert images to. One of: <i>jpeg, webp, webpll,</i> or <i>png</i> — webpll stands for lossless. Try <b>-c</b> to get an idea of how they compare, this will vary. Omitting this option will preserve the original format.</ul>
 
 **--quality** *0 - 95*  
 default: 80  
@@ -94,7 +95,7 @@ default: 80
 **--resize** *WidthxHeight*  
 default: don't resize  
 default (without value)
-<ul>Rescale images to the specified resolution, using lanczos interpolation. Does its best to detect and preserve landscape images.</ul> 
+<ul>Rescale images to the specified resolution, using Lanczos interpolation. Does its best to detect and preserve landscape images.</ul> 
 
 <ul>Add <b>--noupscale</b> to disable upscaling, so images will only be downscaled (as long as they exceed value).</ul>
 
@@ -103,9 +104,21 @@ default (without value)
 <ul><b>Note:</b> this isn't magic. Please don't upscale a low quality source to upload to manga sites and claim yours is higher quality, because it isn't, and it will annoy people.</ul>
 
 **--grayscale**  **-bw**  
-<ul>Convert images to grayscale. Useful for e-Ink devices, reducing file size by 10% to 20%. Provides no benefit to comics which only have a few coloured pages (most manga).</ul>
+<ul>Convert images to grayscale. Useful for e-Paper screens, reducing file size by 10% to 20%. Provides no benefit to comics which only have a few coloured pages (manga).</ul>
 
 </details>
+
+### Examples:
+
+Rescale pages to 1440x1920, convert to grayscale, and save as high quality JPEG:
+
+    reCBZ.py --resize 1440x1920 --quality 90 -bw --fmt jpeg 'Chainsaw Man v01 - Tatsuki Fujimoto.cbz'
+
+For repacking entire directories, use:
+
+    reCBZ.py [options] /path/to/dir/*.cbz`
+
+(unimplemented on Windows)
 
 ## Note about WebP
 
