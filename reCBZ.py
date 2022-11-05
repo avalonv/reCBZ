@@ -103,6 +103,8 @@ class Config():
     compresslevel:int = 0
     # number of images to sample in compare
     comparesamples:int = 10
+    # dry run. archive won't be saved, even if overwrite is used
+    dry:bool = False
     # TODO finish implementings this
     # list of formats to exclude from auto and assist
     blacklistedfmts:tuple = (WebpLossless, WebpLossy)
@@ -252,6 +254,10 @@ class Archive():
             else:
                 new_name = f'{source_name} [reCBZ]{self.config.zipext}'
 
+            if self.config.dry:
+                end_t = time.perf_counter()
+                elapsed = f'{end_t - start_t:.2f}s'
+                return (self.filename, elapsed, 'Dry run')
             # write to new local archive
             if os.path.exists(new_name):
                 self._log(f'{new_name} exists, removing...')
@@ -454,6 +460,11 @@ if __name__ == '__main__':
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
+    parser.add_argument( "-t", "--test",
+        default=Config.dry,
+        dest="dry",
+        action="store_true",
+        help="dry run, no changes are saved at the end (safe)")
     mode_group.add_argument( "-c", "--compare",
         const=2,
         dest="mode",
