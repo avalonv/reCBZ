@@ -1,4 +1,8 @@
-## Purpose
+# reCBZ - CBZ repacker
+
+CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optmize comics for reading on mobile devices and e-Readers.
+
+### Purpose
 
 I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as different format in black and white, which can cut the size of a high quality .cbz by half.
 
@@ -10,9 +14,7 @@ Note that due to how lossy images formats like JPEG/WebP work, compressing and o
 
 ## Install
 
-Supports Windows, MacOS, and Linux.
-
-Requires a reasonably modern [Python](https://www.python.org/downloads/) (>=3.6) installed:
+Supports Linux, MacOS, and Windows (the latter requires installing [Python](https://www.python.org/downloads/))
 
     pip install reCBZ
 
@@ -37,11 +39,11 @@ Convert 'Blame! Master Edition v06.cbz' to various formats and ask which one to 
 
     reCBZ --assist 'Blame! Master Edition v06.cbz'
 
-Convert two volumes to lossless WebP:
+Convert two volumes to lossless WebP at twice the Kindle resolution:
 
-    reCBZ --fmt webpll 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
+    reCBZ --fmt webpll --size 2250x3000 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
-To repack all files in the current directory (e.g. a series), use (TODO/unavailable on Windows):
+To repack all .cbz files in the current directory (e.g. a series), use (TODO/unavailable on Windows):
 
     reCBZ ./*.cbz
 
@@ -49,7 +51,7 @@ Automatically repack all books on the 'Blame!' folder:
 
     reCBZ --auto ./'Blame!'/*.cbz
 
-Rescale all books on the "Saga" folder to 1440x1920, convert pages to grayscale and save as high quality JPEG:
+Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale and save as high quality JPEG:
 
     reCBZ --size 1440x1920 -bw --quality 90 --fmt jpeg ./Saga/*.cbz
 </details>
