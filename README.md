@@ -1,6 +1,6 @@
 # reCBZ - CBZ repacker
 
-CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optmize comics for reading on mobile devices and e-Readers.
+CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optimize comics for reading on mobile devices and e-Readers. Can also double as a fast image converter (see [other uses](#other-uses)).
 
 ### Purpose
 
