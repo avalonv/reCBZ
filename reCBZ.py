@@ -19,7 +19,6 @@ except ModuleNotFoundError:
 # consider replacing os.path with pathlib, as it might be simpler:
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
-README=('https://github.com/avalonv/reCBZ/tree/master/README.md')
 # limit output message width. ignored if verbose
 TERM_COLUMNS, TERM_LINES = get_terminal_size()
 assert TERM_COLUMNS > 0 and TERM_LINES > 0, "can't determine terminal size"
@@ -505,10 +504,11 @@ if __name__ == '__main__':
     # o god who art in heaven please guard mine anime girls
     config = Config()
     import argparse
-    usage_str = f"%(prog)s [options] files.cbz\ndocs: {README}"
+    readme='https://github.com/avalonv/reCBZ/blob/master/README.md#usage'
     parser = argparse.ArgumentParser(
             prog="reCBZ.py",
-            usage=usage_str)
+            usage="%(prog)s [options] files.cbz",
+            epilog=f"for detailed documentation, see {readme}")
     mode_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
