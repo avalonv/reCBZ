@@ -1,33 +1,54 @@
-## Purpose 
+## Purpose
 
-I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing to a slightly lower resolution (1920 x 2560), and converting them to WebP, which can cut the size of a high quality .cbz by half.
+I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as different format in black and white, which can cut the size of a high quality .cbz by half.
 
-For example, by repacking with --auto/WebP, this can halve the size of the first volume of Chainsaw Man from 180MB to just under 96MB without degrading image quality. Over the 11 published volumes, that amounts to over 1GB saved, which is quite a lot when you consider most e-Readers still have only 4GB! And that's just by changing the format, the size can be further reduced by another 50MB by downscaling to 120% display resolution and converting images to grayscale, while still maintaining optimal visual clarity on a 6" 300PPI screen — effectively tripling the amount of manga you can store on your device.
+For example, by repacking with --auto/WebP, this can reduce the size of Chainsaw Man volume 1 from 180MB to just under 96MB, without lowering image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is quite a lot when you consider most e-Readers still have only 4GB)! And that's just by changing the format, the size can be further reduced by another 50MB by downscaling to 120% display resolution, while still maintaining optimal visual clarity on a 6" 300PPI screen -- effectively tripling the amount of manga that can be stored on your device.
 
-Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also supported. As a general rule, you can be more aggressive with compression on black and white images.
+It can also be used to upscale low quality comics with reasonable success. It's not as good as neural networks, but is faster and capable of doubling the resolution of a page with good anti-aliasing (which is useful if you happen to read older manga that hasn't been properly digitized).
 
-It can also be used to upscale low quality images with reasonable success. It is not as good as neural networks, but is capable of doubling the resolution of an image with pretty good anti-aliasing, which is useful if you happen to read lots of of scanlations.
+Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression on black and white images.
 
-Although this was explicitly created with manga and comics (.cbz files) in mind, it can be used for bulk rescaling and conversion of images in general (and is pretty fast at that due to parallelism), with some caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be overwritten).
+## Install
 
-This program should work on Windows, MacOS, and Linux. Image operations are done through [Pillow](https://github.com/python-pillow/Pillow), the rest uses the standard Python library.
+Supports Windows, MacOS, and Linux.
 
-Lastly, this program is new and can lead to unintended loss of data if used carelessly. It's recommended to have a backup somewhere when using --overwrite.
+Requires a reasonably modern [Python](https://www.python.org/downloads/) (>=3.6) installed:
+
+    pip install reCBZ
+
+or
+
+    python3 -m pip install reCBZ
 
 ## Usage
 
+    reCBZ [options] files
 
-Accepts a valid .cbz or .zip file, or a collection of files. Returns a repacked copy based on current settings. See options for defaults.
+Accepts a valid .cbz or .zip file, or a collection of files. With no arguments passed, it will repack the file(s) with slightly higher compression while retaining the original format.
 
 The output file(s) will always be saved as `filename [reCBZ].extension`, unless **--overwrite** is specified.
-  
-### MacOS/Linux:  
 
-    ./reCBZ.py [options] files
-### Windows:  
+### Examples:
 
-    python reCBZ.py [options] files
+Test multiple formats and ask which one to use:
 
+    reCBZ --assist 'Blame! Master Edition v06.cbz'
+
+Convert two volumes to lossless WebP:
+
+    reCBZ --fmt webpll 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
+
+Rescale pages to 1440x1920, convert to grayscale, and save as high quality JPEG:
+
+    reCBZ --size 1440x1920 -bw --quality 90 --fmt jpeg 'Saga Book 1.cbz'
+
+For repacking all files in current directory (e.g. a series), use:
+
+    reCBZ [options] ./*.cbz
+
+(TODO/not implemented on Windows)
+
+## Configuration
 
 ### General options (no effect on file size):
 <details>
@@ -37,10 +58,10 @@ The output file(s) will always be saved as `filename [reCBZ].extension`, unless 
 **--nowrite**  **-nw**  
 <ul>Dry run. The repacked archive isn't saved at the end, making other options completely safe.</ul>
 
-**--compare**  **-c**   
+**--compare**  **-c**  
 <ul>Does a dry run with a small sample of images, converting them to available formats using current settings, then displays a disk usage summary for each.</ul>
 
-**--assist**  **-a**
+**--assist**  **-a**  
 <ul>Same as <b>--compare</b>, except it then asks you which format to use for a real run.</ul>
 
 **--auto**  **-A**  
@@ -59,7 +80,7 @@ The output file(s) will always be saved as `filename [reCBZ].extension`, unless 
 **--verbose**  **-v**  
 <ul>More progress messages. Can be repeated (-vv) for debug output.</ul>
 
-**--silent**  **-s**   
+**--silent**  **-s**  
 <ul>No progress messages.</ul>
 
 **--processes** *1 - 32*  
@@ -94,8 +115,8 @@ default: 80
 
 <ul><b>Note:</b> values higher than 95 will <b>increase</b> file size without actually improving quality.</ul>
 
-**--resize** *WidthxHeight*  
-default: don't resize  
+**--size** *WidthxHeight*  
+default: don't rescale  
 
 <ul>Rescale images to the specified resolution, using Lanczos interpolation. Does its best to detect and preserve landscape images.</ul> 
 
@@ -112,17 +133,9 @@ default: don't resize
 
 </details>
 
-### Examples:
+## Other uses
 
-Downscale pages to 1440x1920, convert to grayscale, and save as high quality JPEG:
-
-    reCBZ.py --resize 1440x1920 --quality 90 -bw --fmt jpeg 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
-
-For repacking entire directories (i.e. a series), use:
-
-    reCBZ.py [options] ./'Our Dreams at Dusk - Yuhki Kamatani'/*.cbz`
-
-(TODO/not implemented on Windows)
+Although this was explicitly created with manga and comics (.cbz files) in mind, it can be used for bulk rescaling and conversion of images in general (and is pretty fast at that due to multiprocessing) so long as you pack them as a ZIP archive first, though there are some important caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be removed). Be very careful when using **--overwrite**.
 
 ## Note about WebP
 
@@ -132,7 +145,7 @@ It isn't perfect however: WebP adoption outside of web browsers has been glacial
 
 **TL;DR** If you're repacking content for the purpose of sharing with others on the web, it is **strongly** advised to avoid this format, as many devices still aren't incapable of displaying them.
 
-## Why not support .cbr and .cb7 archives? 
+## Why not support .cbr and .cb7 archives?
 
 Both RAR (.cbr) and 7z (.cb7) are non-standard compression formats. Undoubtedly they have helped many people compress files on PC, but they are not pre-installed on most operating systems, and thus cannot be opened on most mobile devices and e-Readers without tinkering. Additionally, WinRAR is a proprietary program which limits official access to Windows, as the name suggests, which makes it annoying for future users that plan to read in other devices, and cannot be bundled with free software. 
 

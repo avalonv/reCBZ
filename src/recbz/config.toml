@@ -1,0 +1,43 @@
+# reCBZ.Archive defaults
+[archive]
+# General options
+# ---------------------------------------------------------------------
+# whether to overwrite the original archive. dangerous
+overwrite = false
+# ignore errors when overwrite is true. very dangerous
+force = false
+# level of logging: -1 = quiet. 0 = overlapping progress report. 1 = streaming
+# progress report. 2 = verbose messages. >2 = everything
+loglevel = 0
+# whether to enable multiprocessing
+parallel = true
+# number of processes to spawn
+processes = 16
+# archive save extension name
+zipext = '.cbz'
+# compresslevel for the archive
+compresslevel = 0
+# number of images to sample in compare
+comparesamples = 10
+# dry run. archive won't be saved, even if overwrite is used
+nowrite = false
+# whether to print the 'recbz.py' title
+showtitle = true
+# TODO finish implementings this (don't forget to edit __init__.py)
+# list of formats to exclude from auto and assist
+# blacklistedfmts = (WebpLossless, WebpLossy)
+
+# Options which affect image quality and/or file size:
+# ---------------------------------------------------------------------
+# default format to convert images to. leave empty to preserve original
+formatname = ''
+# compression quality for lossy images
+quality = 80
+# new image width / height. set to 0x0 to preserve original dimensions
+resolution = "0x0"
+# set to True to disable upscaling of images smaller than resolution
+noupscale = false
+# set to True to disable downscaling of images larger than resolution
+nodownscale = false
+# whether to convert images to grayscale
+grayscale = false

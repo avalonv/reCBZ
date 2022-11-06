@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import recbz
 from sys import argv, exit
 import time
 import os
@@ -82,46 +83,24 @@ class Png(LosslessFmt):
 
 class Config():
     def __init__(self):
-        # General options:
-        # ---------------------------------------------------------------------
-        # whether to overwrite the original archive. dangerous
-        self.overwrite:bool = False
-        # ignore errors when overwrite is true. very dangerous
-        self.force:bool = False
-        # level of logging: -1 = quiet. 0 = overlapping progress report.
-        # 1 = streaming progress report. 2 = verbose messages. >2 = everything
-        self.loglevel:int = 0
-        # whether to enable multiprocessing. fast, uses lots of memory
-        self.parallel:bool = True
-        # number of processes to spawn
-        self.processes:int = 16
-        # this only affects the extension name. will always be a zip archive
-        self.zipext:str = '.cbz'
-        # compresslevel for the archive. barely affects file size (images are
-        # already compressed), but negatively impacts performance
-        self.compresslevel:int = 0
-        # number of images to sample in compare
-        self.comparesamples:int = 10
-        # dry run. archive won't be saved, even if overwrite is used
-        self.nowrite:bool = False
+        self.overwrite:bool = recbz.OVERWRITE
+        self.force:bool = recbz.FORCE
+        self.loglevel:int = recbz.LOGLEVEL
+        self.parallel:bool = recbz.PARALLEL
+        self.processes:int = recbz.PROCESSES
+        self.zipext:str = recbz.ZIPEXT
+        self.compresslevel:int = recbz.COMPRESSLEVEL
+        self.comparesamples:int = recbz.COMPARESAMPLES
+        self.nowrite:bool = recbz.NOWRITE
         # TODO finish implementings this
         # list of formats to exclude from auto and assist
         self.blacklistedfmts:tuple = (WebpLossless, WebpLossy)
-
-        # Options which affect image quality and/or file size:
-        # ---------------------------------------------------------------------
-        # default format to convert images to. leave empty to preserve original
-        self.formatname:str = ''
-        # compression quality for lossy images
-        self.quality:int = 80
-        # new image width / height. set to 0 to preserve original dimensions
-        self.resolution:str = "0x0"
-        # set to True to disable upscaling of images smaller than resolution
-        self.noupscale:bool = False
-        # set to True to disable downscaling of images larger than resolution
-        self.nodownscale:bool = False
-        # whether to convert images to grayscale
-        self.grayscale:bool = False
+        self.formatname:str = recbz.FORMATNAME
+        self.quality:int = recbz.QUALITY
+        self.resolution:str = recbz.RESOLUTION
+        self.noupscale:bool = recbz.NOUPSCALE
+        self.nodownscale:bool = recbz.NODOWNSCALE
+        self.grayscale:bool = recbz.GRAYSCALE
         # LANCZOS sacrifices performance for optimal upscale quality
         self.resamplemethod = Image.Resampling.LANCZOS
 
@@ -170,7 +149,7 @@ class Archive():
 
     def repack(self) -> tuple:
         start_t = time.perf_counter()
-        self._log(f'Extracting: {self.filename}', progress=True) # TODO handle exception if file is not a zipfile
+        self._log(f'Extracting: {self.filename}', progress=True)
         try:
             source_zip = ZipFile(self.filename)
         except BadZipFile as err:
@@ -451,19 +430,13 @@ class Archive():
         return summary[0:-1] # strip last newline
 
 
-def print_title() -> None:
-    align = int(TERM_COLUMNS / 2) - 11
-    if align > 21: align = 21
-    if align + 22 > TERM_COLUMNS or align < 0:
-        align = 0
-    align = align * ' '
-    title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
-                       f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
-                       f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
-    print(title_multiline)
+def compare(filename:str, config=Config()) -> None:
+    """Run a sample with each image format, then print the results"""
+    print(Archive(filename, config).analyze()[0])
 
 
 def repack(filename:str, config=Config()) -> None:
+    """Repack the archive, converting all images within"""
     print('[!] Repacking', filename)
     results = Archive(filename, config).repack()
     print(f"┌─ '{results[0]}' completed in {results[1]}")
@@ -471,6 +444,8 @@ def repack(filename:str, config=Config()) -> None:
 
 
 def assist_repack(filename:str, config=Config()) -> None:
+    """Run a sample with each image format, then ask which to repack
+    the rest of the archive with"""
     results = Archive(filename, config).analyze()
     print(results[0])
     options = results[1]
@@ -492,160 +467,11 @@ def assist_repack(filename:str, config=Config()) -> None:
 
 
 def auto_repack(filename:str, config=Config()) -> None:
+    """Run a sample with each image format, then automatically pick
+    the smallest format to repack the rest of the archive with"""
     selection = Archive(filename, config).analyze()[2]
     fmt_name = selection['name']
     fmt_desc = selection['desc']
     print('[!] Proceeding with', fmt_desc)
     config.formatname = fmt_name
     repack(filename, config)
-
-
-if __name__ == '__main__':
-    # o god who art in heaven please guard mine anime girls
-    config = Config()
-    import argparse
-    readme='https://github.com/avalonv/reCBZ/blob/master/README.md#usage'
-    parser = argparse.ArgumentParser(
-            prog="reCBZ.py",
-            usage="%(prog)s [options] files.cbz",
-            epilog=f"for detailed documentation, see {readme}")
-    mode_group = parser.add_mutually_exclusive_group()
-    ext_group = parser.add_mutually_exclusive_group()
-    log_group = parser.add_mutually_exclusive_group()
-    process_group = parser.add_mutually_exclusive_group()
-    parser.add_argument( "-nw", "--nowrite",
-        default=config.nowrite,
-        dest="nowrite",
-        action="store_true",
-        help="dry run, no changes are saved at the end of repacking (safe)")
-    mode_group.add_argument( "-c", "--compare",
-        const=1,
-        dest="mode",
-        action="store_const",
-        help="test a small sample with all formats and print the results (safe)")
-    mode_group.add_argument( "-a", "--assist",
-        const=2,
-        dest="mode",
-        action="store_const",
-        help="compare, then ask which format to use for a real run")
-    mode_group.add_argument( "-A" ,"--auto",
-        const=3,
-        dest="mode",
-        action="store_const",
-        help="compare, then automatically picks the best format for a real run")
-    ext_group.add_argument( "-O", "--overwrite",
-        default=config.overwrite,
-        dest="overwrite",
-        action="store_true",
-        help="overwrite the original archive")
-    parser.add_argument( "-F", "--force",
-        default=config.force,
-        dest="force",
-        action="store_true",
-        help="ignore file errors when using overwrite (dangerous)")
-    log_group.add_argument( "-v", "--verbose",
-        default=config.loglevel,
-        dest="loglevel",
-        action="count",
-        help="increase verbosity of progress messages, repeatable: -vvv")
-    log_group.add_argument( "-s", "--silent",
-        const=0,
-        dest="loglevel",
-        action="store_const",
-        help="disable all progress messages")
-    process_group.add_argument("--processes",
-        default=config.processes,
-        choices=(range(1,33)),
-        metavar="[1-32]",
-        dest="processes",
-        type=int,
-        help="number of processes to spawn")
-    process_group.add_argument( "--sequential",
-        default=config.parallel,
-        dest="parallel",
-        action="store_false",
-        help="disable multiprocessing")
-    ext_group.add_argument( "--zipext",
-        default=config.zipext,
-        choices=('.cbz', '.zip'),
-        metavar=".cbz/.zip",
-        dest="zipext",
-        type=str,
-        help="extension to save the new archive with")
-    parser.add_argument( "--zipcompress",
-        default=config.compresslevel,
-        choices=(range(10)),
-        metavar="[0-9]",
-        dest="compresslevel",
-        type=int,
-        help="compression level for the archive. 0 (default) recommended")
-    parser.add_argument( "--fmt",
-        default=config.formatname,
-        choices=('jpeg', 'png', 'webp', 'webpll'),
-        metavar="fmt",
-        dest="formatname",
-        type=str,
-        help="format to convert images to: jpeg, webp, webpll, or png")
-    parser.add_argument( "--quality",
-        default=config.quality,
-        choices=(range(1,101)),
-        metavar="[0-95]",
-        dest="quality",
-        type=int,
-        help="save quality for lossy formats. >90 not recommended")
-    parser.add_argument( "--size",
-        metavar="WidthxHeight",
-        default=config.resolution,
-        dest="resolution",
-        type=str,
-        help="rescale images to the specified resolution")
-    parser.add_argument( "-noup", "--noupscale",
-        default=config.noupscale,
-        dest="noupscale",
-        action="store_true",
-        help="disable upscaling with --size")
-    parser.add_argument( "-nodw", "--nodownscale",
-        default=config.nodownscale,
-        dest="nodownscale",
-        action="store_true",
-        help="disable downscaling with --size")
-    parser.add_argument( "-bw", "--grayscale",
-        default=config.grayscale,
-        dest="grayscale",
-        action="store_true",
-        help="convert images to grayscale")
-    args, unknown_args = parser.parse_known_args()
-    # this is probably not the most pythonic way to do this
-    # I'm sorry guido-san...
-    for key, val in args.__dict__.items():
-        if key in config.__dict__.keys():
-            setattr(config, key, val)
-    paths = []
-    for arg in unknown_args:
-        if os.path.isfile(arg):
-            paths.append(arg)
-        elif os.path.isdir(arg):
-            parser.print_usage()
-            print(f'{arg}: is a directory')
-            exit(1)
-        else:
-            parser.print_help()
-            print(f'\nunknown file or option: {arg}')
-            exit(1)
-    if len(paths) <= 0:
-        print(f'missing input file')
-        parser.print_usage()
-        exit(1)
-    # everything passed
-    print_title()
-    mode = args.mode
-    for filename in paths:
-        if mode is None:
-            repack(filename, config)
-        elif mode == 1:
-            results = Archive(filename, config).analyze()
-            print(results[0])
-        elif mode == 2:
-            assist_repack(filename, config)
-        elif mode == 3:
-            auto_repack(filename, config)
