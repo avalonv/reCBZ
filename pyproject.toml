@@ -1,0 +1,31 @@
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reCBZ"
+version = "0.0.1b1"
+description = "Utility for repacking and optmizing manga & comic archives"
+readme = "README.md"
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: System :: Archiving",
+    "Topic :: System :: Archiving :: Compression",
+    "Topic :: Utilities",
+]
+keywords = ["manga", "comics", "cbz", "ebooks"]
+dependencies = [
+    "pillow >= 8",
+    'tomli; python_version < "3.11"',
+]
+requires-python = ">=3.6"
+
+[project.urls]
+Homepage = "https://github.com/avalonv/reCBZ"
+
+[project.scripts]
+reCBZ = "recbz.__main__:main"
