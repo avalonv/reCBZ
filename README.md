@@ -35,7 +35,7 @@ The output file(s) will always be saved as `filename [reCBZ].extension`, unless 
   <summary>Click to expand</summary>
 <br>
 
-Convert 'Blame! Master Edition v06.cbz' to various formats and ask which one to use:
+Convert 'Blame! Master Edition v06.cbz' to various formats and ask which one to repack with:
 
     reCBZ --assist 'Blame! Master Edition v06.cbz'
 
@@ -47,7 +47,7 @@ To repack all .cbz files in the current directory (e.g. a series), use (TODO/una
 
     reCBZ ./*.cbz
 
-Automatically repack all books on the 'Blame!' folder:
+Automatically convert and repack all books on the 'Blame!' folder:
 
     reCBZ --auto ./'Blame!'/*.cbz
 
