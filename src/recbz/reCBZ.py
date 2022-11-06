@@ -256,13 +256,13 @@ class Archive():
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
-        size_totals = tuple(sorted(size_totals))
-        summary = Archive._diff_summary_analyze(size_totals, sample_size)
-        options_dic = {i : total[2] for i, total in enumerate(size_totals)}
-        suggested_fmt = {"desc": size_totals[0][1], "name": size_totals[0][2]}
-        self._log(str(size_totals))
+        sorted_raw = tuple(sorted(size_totals))
+        summary = Archive._diff_summary_analyze(sorted_raw, sample_size)
+        choices_dic = {i : total[2] for i, total in enumerate(sorted_raw)}
+        suggested_fmt = {"desc": sorted_raw[0][1], "name": sorted_raw[0][2]}
+        self._log(str(sorted_raw))
         self._log('', progress=True)
-        return summary, options_dic, suggested_fmt
+        return summary, choices_dic, suggested_fmt, sorted_raw
 
 
     def _transform_img(self, source:str, dest=None, forceformat=None): #-> None | Str:
