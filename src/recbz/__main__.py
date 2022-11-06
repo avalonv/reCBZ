@@ -1,4 +1,4 @@
-from recbz import reCBZ, SHOWTITLE, CMDNAME
+from recbz import reCBZ, SHOWTITLE, CMDNAME, __version__
 import os
 import argparse
 
@@ -27,6 +27,10 @@ def main():
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
+    parser.add_argument( "--version",
+        dest="version",
+        action="store_true",
+        help="show version and exit")
     parser.add_argument( "-nw", "--nowrite",
         default=config.nowrite,
         dest="nowrite",
@@ -129,6 +133,9 @@ def main():
         action="store_true",
         help="convert images to grayscale")
     args, unknown_args = parser.parse_known_args()
+    if args.version:
+        print(f'{CMDNAME} v{__version__}')
+        exit(0)
     # this is probably not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
