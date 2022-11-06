@@ -4,7 +4,7 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 CMDNAME = 'reCBZ'
 
 _cfg = tomllib.loads(resources.read_text("recbz", "config.toml"))
