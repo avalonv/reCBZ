@@ -461,7 +461,6 @@ def assist_repack(filename:str, config=Config()) -> None:
         except KeyboardInterrupt:
             print('[!] Aborting')
             exit(1)
-    print('would have selected: ', selection)
     config.formatname = selection
     repack(filename, config)
 
