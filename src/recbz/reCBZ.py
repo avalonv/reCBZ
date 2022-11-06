@@ -451,6 +451,7 @@ def assist_repack(filename:str, config=Config()) -> str:
     """Run a sample with each image format, then ask which to repack
     the rest of the archive with
     Returns path to repacked archive"""
+    print('[!] Analyzing', filename)
     results = Archive(filename, config).analyze()
     print(results[0])
     options = results[1]
@@ -474,6 +475,7 @@ def auto_repack(filename:str, config=Config()) -> str:
     """Run a sample with each image format, then automatically pick
     the smallest format to repack the rest of the archive with
     Returns path to repacked archive"""
+    print('[!] Analyzing', filename)
     selection = Archive(filename, config).analyze()[2]
     fmt_name = selection['name']
     fmt_desc = selection['desc']
