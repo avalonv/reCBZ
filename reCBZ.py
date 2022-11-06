@@ -464,14 +464,14 @@ def print_title() -> None:
     print(title_multiline)
 
 
-def repack(filename:str, config:Config) -> None:
+def repack(filename:str, config=Config()) -> None:
     print('[!] Repacking', filename)
     results = Archive(filename, config).repack()
     print(f"┌─ '{results[0]}' completed in {results[1]}")
     print(f"└───■■ {results[2]} ■■")
 
 
-def assist_repack(filename:str, config:Config) -> None:
+def assist_repack(filename:str, config=Config()) -> None:
     results = Archive(filename, config).analyze()
     print(results[0])
     options = results[1]
@@ -492,7 +492,7 @@ def assist_repack(filename:str, config:Config) -> None:
     repack(filename, config)
 
 
-def auto_repack(filename:str, config:Config) -> None:
+def auto_repack(filename:str, config=Config()) -> None:
     selection = Archive(filename, config).analyze()[2]
     fmt_name = selection['name']
     fmt_desc = selection['desc']
