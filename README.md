@@ -29,6 +29,9 @@ Accepts a valid .cbz or .zip file, or a collection of files. With no arguments p
 The output file(s) will always be saved as `filename [reCBZ].extension`, unless **--overwrite** is specified.
 
 ### Examples:
+<details>
+  <summary>Click to expand</summary>
+<br>
 
 Convert 'Blame! Master Edition v06.cbz' to various formats and ask which one to use:
 
@@ -38,9 +41,9 @@ Convert two volumes to lossless WebP:
 
     reCBZ --fmt webpll 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
-To repack all files in the current directory (e.g. a series), use: (TODO/unavailable on Windows)
+To repack all files in the current directory (e.g. a series), use (TODO/unavailable on Windows):
 
-    reCBZ [options] ./*.cbz
+    reCBZ ./*.cbz
 
 Automatically repack all books on the 'Blame!' folder:
 
@@ -49,6 +52,7 @@ Automatically repack all books on the 'Blame!' folder:
 Rescale all books on the "Saga" folder to 1440x1920, convert pages to grayscale and save as high quality JPEG:
 
     reCBZ --size 1440x1920 -bw --quality 90 --fmt jpeg ./Saga/*.cbz
+</details>
 
 ## Configuration
 
@@ -122,7 +126,7 @@ default: don't rescale
 
 <ul>Rescale images to the specified resolution, using Lanczos interpolation. Does its best to detect and preserve landscape images.</ul> 
 
-<ul>Add <b>--noupscale</b> to disable upscaling, so images will only be downscaled (as long as they're greater than value).</ul>
+<ul>Add <b>--noupscale</b> to disable upscaling, so images can only be downscaled (as long as they're greater than value).</ul>
 
 <ul>Add <b>--nodownscale</b> to disable upscaling, so images can only be upscaled (as long as they're less than value).</ul>
 
