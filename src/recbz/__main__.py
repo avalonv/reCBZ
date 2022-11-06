@@ -139,15 +139,15 @@ def main():
         if os.path.isfile(arg):
             paths.append(arg)
         elif os.path.isdir(arg):
-            parser.print_usage()
             print(f'{arg}: is a directory')
+            parser.print_usage()
             exit(1)
         else:
             parser.print_help()
             print(f'\nunknown file or option: {arg}')
             exit(1)
     if len(paths) <= 0:
-        print(f'missing input file')
+        print(f'missing input file (see --help)')
         parser.print_usage()
         exit(1)
     # everything passed
