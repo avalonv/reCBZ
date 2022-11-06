@@ -208,7 +208,7 @@ class Archive():
         elapsed = f'{end_t - start_t:.2f}s'
         diff = Archive._diff_summary_repack(source_size, new_size)
         self._log('', progress=True)
-        return os.path.basename(new_path), elapsed, diff
+        return new_path, elapsed, diff
 
 
     def analyze(self) -> tuple:
@@ -432,20 +432,25 @@ class Archive():
 
 def compare(filename:str, config=Config()) -> None:
     """Run a sample with each image format, then print the results"""
-    print(Archive(filename, config).analyze()[0])
+    print('[!] Analyzing', filename)
+    results = Archive(filename, config).analyze()
+    print(results[0])
 
 
-def repack(filename:str, config=Config()) -> None:
-    """Repack the archive, converting all images within"""
+def repack(filename:str, config=Config()) -> str:
+    """Repack the archive, converting all images within
+    Returns path to repacked archive"""
     print('[!] Repacking', filename)
     results = Archive(filename, config).repack()
-    print(f"┌─ '{results[0]}' completed in {results[1]}")
+    print(f"┌─ '{os.path.basename(results[0])}' completed in {results[1]}")
     print(f"└───■■ {results[2]} ■■")
+    return results[0]
 
 
-def assist_repack(filename:str, config=Config()) -> None:
+def assist_repack(filename:str, config=Config()) -> str:
     """Run a sample with each image format, then ask which to repack
-    the rest of the archive with"""
+    the rest of the archive with
+    Returns path to repacked archive"""
     results = Archive(filename, config).analyze()
     print(results[0])
     options = results[1]
@@ -462,15 +467,16 @@ def assist_repack(filename:str, config=Config()) -> None:
             print('[!] Aborting')
             exit(1)
     config.formatname = selection
-    repack(filename, config)
+    return repack(filename, config)[0]
 
 
-def auto_repack(filename:str, config=Config()) -> None:
+def auto_repack(filename:str, config=Config()) -> str:
     """Run a sample with each image format, then automatically pick
-    the smallest format to repack the rest of the archive with"""
+    the smallest format to repack the rest of the archive with
+    Returns path to repacked archive"""
     selection = Archive(filename, config).analyze()[2]
     fmt_name = selection['name']
     fmt_desc = selection['desc']
     print('[!] Proceeding with', fmt_desc)
     config.formatname = fmt_name
-    repack(filename, config)
+    return repack(filename, config)[0]
