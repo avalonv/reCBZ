@@ -7,7 +7,7 @@ name = "reCBZ"
 version = "0.1.0"
 description = "Utility for repacking and optmizing manga & comic archives"
 readme = "README.md"
-license = "GPLv3"
+license = { file = "LICENSE" }
 classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python",
