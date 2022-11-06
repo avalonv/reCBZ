@@ -30,7 +30,7 @@ The output file(s) will always be saved as `filename [reCBZ].extension`, unless 
 
 ### Examples:
 
-Test multiple formats and ask which one to use:
+Convert 'Blame! Master Edition v06.cbz' to various formats and ask which one to use:
 
     reCBZ --assist 'Blame! Master Edition v06.cbz'
 
@@ -38,15 +38,17 @@ Convert two volumes to lossless WebP:
 
     reCBZ --fmt webpll 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
-Rescale pages to 1440x1920, convert to grayscale, and save as high quality JPEG:
-
-    reCBZ --size 1440x1920 -bw --quality 90 --fmt jpeg 'Saga Book 1.cbz'
-
-For repacking all files in current directory (e.g. a series), use:
+To repack all files in the current directory (e.g. a series), use: (TODO/unavailable on Windows)
 
     reCBZ [options] ./*.cbz
 
-(TODO/not implemented on Windows)
+Automatically repack all books on the 'Blame!' folder:
+
+    reCBZ --auto ./'Blame!'/*.cbz
+
+Rescale all books on the "Saga" folder to 1440x1920, convert pages to grayscale and save as high quality JPEG:
+
+    reCBZ --size 1440x1920 -bw --quality 90 --fmt jpeg ./Saga/*.cbz
 
 ## Configuration
 
