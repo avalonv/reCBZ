@@ -1,26 +1,24 @@
 # reCBZ - CBZ repacker
 
-CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optimize comics for reading on mobile devices and e-Readers. Can also double as a fast image converter (see [other uses](#other-uses)).
+CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optimize comics for reading on mobile devices and e-Readers. Can also be used to convert image formats in bulk (see [other uses](#other-uses)).
 
 ### Purpose
 
-I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as different format in black and white, which can cut the size of a high quality .cbz by half.
+I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as a different format in black and white, which can cut the size of a high quality .cbz by half.
 
-For example, by repacking with --auto/WebP, this can reduce the size of Chainsaw Man volume 1 from 180MB to just under 96MB, without lowering image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is quite a lot when you consider most e-Readers still have only 4GB)! And that's just by changing the format, the size can be further reduced by another 50MB by downscaling to 120% display resolution, while still maintaining optimal visual clarity on a 6" 300PPI screen — effectively tripling the amount of manga that can be stored on your device.
-
-It can also be used to upscale low quality comics with reasonable success. It's not as good as neural networks, but is faster and capable of doubling the resolution of a page with good anti-aliasing (which is useful if you happen to read older manga that hasn't been properly digitized).
+For example, by repacking with --auto/WebP, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is quite a lot when you consider most e-Readers still have only 4GB)! And that's just by changing the format, the size can be further reduced by another 50MB by downscaling to 120% display resolution, while still maintaining optimal visual clarity on a 6" 300PPI screen — effectively tripling the amount of manga that can be stored on your device.
 
 Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression on black and white images.
 
 ## Install
 
-Supports Linux, MacOS, and Windows (the latter requires installing [Python](https://www.python.org/downloads/))
+    python -m pip install reCBZ
 
-    pip install reCBZ
+or build from source:
 
-or
+    git clone https://github.com/avalonv/reCBZ
 
-    python3 -m pip install reCBZ
+    python -m pip install -e reCBZ
 
 ## Usage
 
@@ -143,7 +141,7 @@ default: don't rescale
 
 ## Other uses
 
-Although this was explicitly created with manga and comics (.cbz files) in mind, it can be used for bulk rescaling and conversion of images in general (and is pretty fast at that due to multiprocessing) so long as you pack them as a ZIP archive first, though there are some important caveats: non-image files will be discarded, and the folder structure will be flattened (every image will be written to the same folder, files which share a name will be removed). Be very careful when using **--overwrite**.
+Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a ZIP archive first. There are some important caveats: non-image files will be automatically discarded, and the folder structure will be flattened (every image will be written to the same folder), meaning that files which share a name will be lost. Be very careful when using **--overwrite**.
 
 ## Note about WebP
 
