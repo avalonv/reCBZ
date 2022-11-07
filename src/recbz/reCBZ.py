@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import recbz
+from recbz.formats import *
 from sys import argv, exit
 import time
 import os
@@ -27,59 +28,6 @@ assert TERM_COLUMNS > 0 and TERM_LINES > 0, "can't determine terminal size"
 if TERM_COLUMNS > 120: max_width = 120
 elif TERM_COLUMNS < 30: max_width= 30
 else: max_width = TERM_COLUMNS - 2
-
-
-class LossyFmt():
-    lossless:bool = False
-    quality:int = 80
-
-
-class LosslessFmt():
-    lossless:bool = True
-    quality:int = 100
-
-
-class Jpeg(LossyFmt):
-    name:str = 'jpeg'
-    ext:tuple = '.jpeg', '.jpg'
-    desc:str = 'JPEG'
-
-    @classmethod
-    def save(cls, img:Image.Image, dest):
-        img.save(dest, optimize=True, quality=cls.quality)
-
-
-class WebpLossy(LossyFmt):
-    # conclusions: optmize appears to have no effect. method >4 has a very mild
-    # effect (~1% reduction with 800MB jpeg source), but takes twice as long
-    name:str = 'webp'
-    ext:tuple = '.webp',
-    desc:str = 'WebP'
-
-    @classmethod
-    def save(cls, img:Image.Image, dest):
-        img.save(dest, lossless=cls.lossless, method=5, quality=cls.quality)
-
-
-class WebpLossless(LosslessFmt):
-    name:str = 'webpll'
-    ext:tuple = '.webp',
-    desc:str = 'WebP Lossless'
-
-    @classmethod
-    def save(cls, img:Image.Image, dest):
-        # for some reason 'quality' is akin to Png compress_level when lossless
-        img.save(dest, lossless=cls.lossless, method=4, quality=100)
-
-
-class Png(LosslessFmt):
-    name:str = 'png'
-    ext:tuple = '.png',
-    desc:str = 'PNG'
-
-    @classmethod
-    def save(cls, img:Image.Image, dest):
-        img.save(dest, optimize=True, compress_level=9)
 
 
 class Config():
@@ -277,7 +225,7 @@ class Archive():
             sample_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
                             in os.walk(tempdir) for f in fnames]
             nbytes = sum(os.path.getsize(f) for f in sample_imgs)
-            sample_fmt = self._determine_format(Image.open(sample_imgs[0]))
+            sample_fmt = determine_format(Image.open(sample_imgs[0]))
             size_totals = [(nbytes, f'{sample_fmt.desc} ({Archive.source_id})',
                            sample_fmt.name)]
             # also compute the size of each valid format after converting
@@ -314,7 +262,7 @@ class Archive():
 
         # determine target format
         try:
-            source_fmt = self._determine_format(img)
+            source_fmt = determine_format(img)
         except KeyError:
             self._log(f"{source}: invalid image format, ignoring...'")
             return None
@@ -354,25 +302,6 @@ class Archive():
         self._log(f'Save img: {os.path.basename(path)}', progress=True)
         return path
 
-
-    def _determine_format(self, img:Image.Image):
-        PIL_fmt = img.format
-        if PIL_fmt is None:
-            raise KeyError(f"Image.format returned None")
-        elif PIL_fmt == "PNG":
-            return Png
-        elif PIL_fmt == "JPEG":
-            return Jpeg
-        elif PIL_fmt == "WEBP":
-            # it's possible to test but doesn't appear to be very reliable :(
-            # https://github.com/python-pillow/Pillow/discussions/6716
-            # with open(img.filename, "rb") as fp:
-            #     if fp.read(15)[-1:] == b"L":
-            #         return WebpLossless
-            #     else:
-            return WebpLossy
-        else:
-            raise KeyError(f"'{PIL_fmt}': invalid format")
 
 
     def _resize_img(self, img:Image.Image) -> Image.Image:
