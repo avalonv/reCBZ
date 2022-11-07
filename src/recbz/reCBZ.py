@@ -6,6 +6,7 @@ import time
 import os
 from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
 from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 from tempfile import TemporaryDirectory
 from functools import partial
 from shutil import get_terminal_size
@@ -210,8 +211,20 @@ class Archive():
         self._log('', progress=True)
         return new_path, elapsed, diff
 
-
     def analyze(self) -> tuple:
+        def test_fmt(sample_imgs, tempdir, fmt) -> tuple:
+            fmtdir = os.path.join(tempdir, fmt.name)
+            os.mkdir(fmtdir)
+            pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
+            if self.conf.parallel:
+                with Pool(processes=len(sample_imgs)) as pool:
+                    results = pool.map(pfunc, sample_imgs)
+            else:
+                results = map(pfunc, sample_imgs)
+            converted_imgs = [path for path in results if path]
+            nbytes = sum(os.path.getsize(f) for f in converted_imgs)
+            return nbytes, fmt.desc, fmt.name
+
         self._log(f'Extracting: {self.filename}', progress=True)
         try:
             source_zip = ZipFile(self.filename)
@@ -237,22 +250,15 @@ class Archive():
                             in os.walk(tempdir) for f in fnames]
             nbytes = sum(os.path.getsize(f) for f in sample_imgs)
             sample_fmt = self._determine_format(Image.open(sample_imgs[0]))
-            size_totals.append((nbytes,
-                                f'{sample_fmt.desc} ({Archive.source_id})',
-                                sample_fmt.name))
+            size_totals = [(nbytes, f'{sample_fmt.desc} ({Archive.source_id})',
+                           sample_fmt.name)]
             # also compute the size of each valid format after converting
-            for fmt in self.valid_formats:
-                fmtdir = os.path.join(tempdir, fmt.name)
-                os.mkdir(fmtdir)
-                func = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
-                if self.conf.parallel:
-                    with Pool(processes=sample_size) as pool:
-                        results = pool.map(func, sample_imgs)
-                else:
-                    results = map(func, sample_imgs)
-                converted_imgs = [path for path in results if path]
-                nbytes = sum(os.path.getsize(f) for f in converted_imgs)
-                size_totals.append((nbytes, fmt.desc, fmt.name))
+            pfunc = partial(test_fmt, sample_imgs, tempdir)
+            if self.conf.parallel:
+                with ThreadPool(processes=len(self.valid_formats)) as tpool:
+                    size_totals.extend(tpool.map(pfunc, self.valid_formats))
+            else:
+                size_totals.extend(map(pfunc, self.valid_formats))
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
