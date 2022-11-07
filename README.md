@@ -73,7 +73,7 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 **--auto**  **-A**  
 <ul>Same as <b>--compare</b>, except it automatically picks the best/smallest format for a real run.</ul> 
 
-<ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. <s>If you wish to exclude this format, you can add <b>--nowebp</b></s> (TODO/Unimplemented).</ul>
+<ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. If you wish to exclude this format, you can add <b>--nowebp</b>.</ul>
 
 **--overwrite**  **-O**  
 <ul>Overwrite the original archive. Specifically, it will be converted to a valid .cbz structure, meaning that non-image files will be discarded, and the folder structure will be flattened, any images sharing a name will be lost. Make sure you understand what this means before using this.</ul>
@@ -117,9 +117,9 @@ default: same as source
 
 **--quality** *0 - 95*  
 default: 80  
-<ul>Image compression quality for lossy formats, will have a large impact on file size. Smaller values will reduce file size at the cost of visual quality. This option doesn't affect lossless formats</ul>
+<ul>Image compression quality for lossy formats, will have a large impact on file size. Smaller values will reduce file size at the cost of visual quality. This option only applies to lossy formats</ul>
 
-<ul><b>Note:</b> values higher than 95 will <b>increase</b> file size without actually improving quality.</ul>
+<ul><b>Note:</b> values higher than 95 will usually <b>increase</b> file size without actually improving quality.</ul>
 
 **--size** *WidthxHeight*  
 default: don't rescale  
@@ -128,7 +128,7 @@ default: don't rescale
 
 <ul>Add <b>--noupscale</b> to disable upscaling, so images can only be downscaled (as long as they're greater than value).</ul>
 
-<ul>Add <b>--nodownscale</b> to disable upscaling, so images can only be upscaled (as long as they're less than value).</ul>
+<ul>Add <b>--nodownscale</b> to disable downscaling, so images can only be upscaled (as long as they're less than value).</ul>
 
 <ul>1440x1920 (3:4) is suitable for most 6"/7" e-Reader screens. For smaller devices, setting this to 150% of your screen's resolution is usually the best compromise between quality and file size, still allowing you to zoom-in to read the lore critical thoughts of that moe character.</ul>
 
@@ -145,7 +145,7 @@ Although this was explicitly created with manga and comics in mind, it can be us
 
 ## Note about WebP
 
-Generally speaking, the WebP format tends to compress images more efficiently than both JPEG and PNG, allowing both lossy and lossless methods. This leads to a few noticeable quirks when converting from lossy to lossless and vice versa, which are covered [here](https://developers.google.com/speed/webp/faq#can_a_webp_image_grow_larger_than_its_source_image), but overall, if you're confident your reading software supports it, this is probably the best option for saving disk space. 
+Generally speaking, the WebP format tends to compress images more efficiently than both JPEG and PNG, allowing both lossy and lossless methods. This leads to a few noticeable quirks when converting from lossy to lossless and vice versa, which are covered [here](https://developers.google.com/speed/webp/faq#can_a_webp_image_grow_larger_than_its_source_image), but overall, if you're confident your reading software supports it, this is probably the best option for saving disk space.
 
 It isn't perfect however: WebP adoption outside of web browsers has been glacial, and it is not universally supported yet, meaning it might not open on older devices and the vast majority of e-Readers (Kindle/Kobo) — although [Koreader](https://github.com/koreader/koreader/) allows you to get around this limitation.
 

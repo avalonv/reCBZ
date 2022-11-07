@@ -23,9 +23,8 @@ comparesamples = 10
 nowrite = false
 # whether to print the 'recbz.py' title
 showtitle = true
-# TODO finish implementings this (don't forget to edit __init__.py)
-# list of formats to exclude from auto and assist
-# blacklistedfmts = (WebpLossless, WebpLossy)
+# space separated list of formats to exclude from --compare
+blacklistedfmts = ''
 
 # Options which affect image quality and/or file size:
 # ---------------------------------------------------------------------

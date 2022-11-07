@@ -93,9 +93,7 @@ class Config():
         self.compresslevel:int = recbz.COMPRESSLEVEL
         self.comparesamples:int = recbz.COMPARESAMPLES
         self.nowrite:bool = recbz.NOWRITE
-        # TODO finish implementings this
-        # list of formats to exclude from auto and assist
-        self.blacklistedfmts:tuple = (WebpLossless, WebpLossy)
+        self.blacklistedfmts:str = recbz.BLACKLISTEDFMTS
         self.formatname:str = recbz.FORMATNAME
         self.quality:int = recbz.QUALITY
         self.resolution:str = recbz.RESOLUTION
@@ -130,8 +128,21 @@ class Config():
         else: return None
 
 
+    @property # TODO finish this
+    def get_validformats(self) -> tuple:
+        LossyFmt.quality = self.quality
+        all_fmts = (Png, Jpeg, WebpLossy, WebpLossless)
+        try:
+            blacklist = self.blacklistedfmts.lower().split(' ')
+        except AttributeError: # blacklist is None
+            return all_fmts
+        valid_fmts = tuple(fmt for fmt in all_fmts if fmt.name not in blacklist)
+        assert len(valid_fmts) >= 1, "valid_formats is 0"
+        return valid_fmts
+
+
     @property
-    def get_newsize(self):
+    def get_newsize(self) -> tuple:
         default_value = (0,0)
         newsize = self.resolution.lower().strip()
         try:
@@ -158,8 +169,8 @@ class Archive():
         if os.path.isfile(filename): self.filename:str = filename
         else: raise ValueError(f"{filename}: invalid path")
         self.conf:Config = config
-        LossyFmt.quality = self.conf.quality
-        self.valid_formats:tuple = (Png, Jpeg, WebpLossy, WebpLossless)
+        # only used in analyze(). might i move it there?
+        self.valid_formats:tuple = self.conf.get_validformats
 
 
     def repack(self) -> tuple:

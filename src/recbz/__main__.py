@@ -24,6 +24,7 @@ def main():
             usage="%(prog)s [options] files.cbz",
             epilog=f"for detailed documentation, see {readme}")
     mode_group = parser.add_mutually_exclusive_group()
+    fmt_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
@@ -51,6 +52,12 @@ def main():
         dest="mode",
         action="store_const",
         help="compare, then automatically picks the best format for a real run")
+    fmt_group.add_argument( "--nowebp",
+        default=config.blacklistedfmts,
+        const=f'{config.blacklistedfmts} webp webpll',
+        dest="blacklistedfmts",
+        action="store_const",
+        help="exclude webp from --auto")
     ext_group.add_argument( "-O", "--overwrite",
         default=config.overwrite,
         dest="overwrite",
@@ -97,7 +104,7 @@ def main():
         dest="compresslevel",
         type=int,
         help="compression level for the archive. 0 (default) recommended")
-    parser.add_argument( "--fmt",
+    fmt_group.add_argument( "--fmt",
         default=config.formatname,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="fmt",
@@ -141,6 +148,7 @@ def main():
     for key, val in args.__dict__.items():
         if key in config.__dict__.keys():
             setattr(config, key, val)
+    # parse files
     paths = []
     for arg in unknown_args:
         if os.path.isfile(arg):
