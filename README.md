@@ -1,6 +1,6 @@
 # reCBZ - CBZ repacker
 
-CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optimize comics for reading on mobile devices and e-Readers. Can also double as a quick image conversion tool (see [other uses](#other-uses)).
+CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optimize comics for reading on mobile devices and e-Readers. Can also be used to convert image formats in bulk (see [other uses](#other-uses)).
 
 ### Purpose
 
@@ -8,19 +8,17 @@ I own a fairly large library of manga, and it takes quite a bit of space on disk
 
 For example, by repacking with --auto/WebP, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is quite a lot when you consider most e-Readers still have only 4GB)! And that's just by changing the format, the size can be further reduced by another 50MB by downscaling to 120% display resolution, while still maintaining optimal visual clarity on a 6" 300PPI screen — effectively tripling the amount of manga that can be stored on your device.
 
-This can also be used to upscale low quality comics with reasonable success. It's not as good as neural networks, but is fast and provides better results than most resample methods, which is useful if you happen to read older manga that hasn't been properly digitized.
-
 Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression on black and white images.
 
 ## Install
 
-Supported platforms: Linux, MacOS, and Windows (the latter requires installing [Python](https://www.python.org/downloads/))
+    python -m pip install reCBZ
 
-    pip install reCBZ
+or build from source:
 
-or
+    git clone https://github.com/avalonv/reCBZ
 
-    python3 -m pip install reCBZ
+    python -m pip install -e reCBZ
 
 ## Usage
 
@@ -143,7 +141,7 @@ default: don't rescale
 
 ## Other uses
 
-Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a a ZIP archive first. There are some important caveats: non-image files will be automatically discarded, and the folder structure will be flattened (every image will be written to the same folder), meaning that files which share a name will be lost. Be very careful when using **--overwrite**.
+Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a ZIP archive first. There are some important caveats: non-image files will be automatically discarded, and the folder structure will be flattened (every image will be written to the same folder), meaning that files which share a name will be lost. Be very careful when using **--overwrite**.
 
 ## Note about WebP
 
