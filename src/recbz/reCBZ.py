@@ -431,7 +431,7 @@ def assist_repack(filename:str, config=Config()) -> str:
             print('[!] Aborting')
             exit(1)
     config.formatname = selection
-    return repack(filename, config)[0]
+    return repack(filename, config)
 
 
 def auto_repack(filename:str, config=Config()) -> str:
@@ -444,4 +444,4 @@ def auto_repack(filename:str, config=Config()) -> str:
     fmt_desc = selection['desc']
     print('[!] Proceeding with', fmt_desc)
     config.formatname = fmt_name
-    return repack(filename, config)[0]
+    return repack(filename, config)
