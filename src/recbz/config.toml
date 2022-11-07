@@ -11,8 +11,8 @@ force = false
 loglevel = 0
 # whether to enable multiprocessing
 parallel = true
-# number of processes to spawn
-processes = 16
+# max number of processes to spawn. 0 will use all available CPUs
+processes = 0
 # archive save extension name
 zipext = '.cbz'
 # compresslevel for the archive

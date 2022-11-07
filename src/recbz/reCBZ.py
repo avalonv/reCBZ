@@ -107,6 +107,20 @@ class Config():
 
 
     @property
+    def get_pcount(self) -> int:
+        default_value = 8
+        if self.processes > 0:
+            return self.processes
+        else:
+            logical_cores = os.cpu_count()
+            try:
+                assert logical_cores is not None
+                return logical_cores
+            except AssertionError:
+                return default_value
+
+
+    @property
     def get_targetformat(self):
         if self.formatname in (None, ''): return None
         elif self.formatname == 'jpeg': return Jpeg
@@ -166,11 +180,13 @@ class Archive():
             # but this is the only way to avoid problems with subfolders
             source_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
                             in os.walk(tempdir) for f in fnames]
+            assert len(source_imgs) >= 1, 'no files in archive'
 
             # process images in place
             if self.conf.parallel:
-                with Pool(processes=self.conf.processes) as pool:
-                    results = pool.map(self._transform_img, source_imgs)
+                pcount = min(len(source_imgs), self.conf.get_pcount)
+                with Pool(processes=pcount) as MPpool:
+                    results = MPpool.map(self._transform_img, source_imgs)
             else:
                 results = map(self._transform_img, source_imgs)
             imgs_abspath = [path for path in results if path]
@@ -217,8 +233,9 @@ class Archive():
             os.mkdir(fmtdir)
             pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
             if self.conf.parallel:
-                with Pool(processes=len(sample_imgs)) as pool:
-                    results = pool.map(pfunc, sample_imgs)
+                pcount = min(len(sample_imgs), self.conf.get_pcount)
+                with Pool(processes=pcount) as MPpool:
+                    results = MPpool.map(pfunc, sample_imgs)
             else:
                 results = map(pfunc, sample_imgs)
             converted_imgs = [path for path in results if path]
@@ -255,8 +272,8 @@ class Archive():
             # also compute the size of each valid format after converting
             pfunc = partial(test_fmt, sample_imgs, tempdir)
             if self.conf.parallel:
-                with ThreadPool(processes=len(self.valid_formats)) as tpool:
-                    size_totals.extend(tpool.map(pfunc, self.valid_formats))
+                with ThreadPool(processes=len(self.valid_formats)) as Tpool:
+                    size_totals.extend(Tpool.map(pfunc, self.valid_formats))
             else:
                 size_totals.extend(map(pfunc, self.valid_formats))
 
@@ -277,7 +294,7 @@ class Archive():
         source_ext = source_ext.lower()
         # open
         try:
-            self._log(f'Read file: {os.path.basename(source)}', progress=True)
+            self._log(f'Read img: {os.path.basename(source)}', progress=True)
             log_buff = f'/open:  {source}\n'
             img = Image.open(source)
         except IOError:
@@ -323,7 +340,7 @@ class Archive():
         end_t = time.perf_counter()
         elapsed = f'{end_t-start_t:.2f}s'
         self._log(f'{log_buff}\\write: {path}: took {elapsed}')
-        self._log(f'Save file: {os.path.basename(path)}', progress=True)
+        self._log(f'Save img: {os.path.basename(path)}', progress=True)
         return path
 
 
