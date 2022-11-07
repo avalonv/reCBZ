@@ -31,7 +31,7 @@ blacklistedfmts = ''
 # default format to convert images to. leave empty to preserve original
 formatname = ''
 # compression quality for lossy images
-quality = 80
+quality = 85
 # new image width / height. set to 0x0 to preserve original dimensions
 resolution = "0x0"
 # set to True to disable upscaling of images smaller than resolution

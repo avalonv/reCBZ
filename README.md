@@ -113,13 +113,17 @@ default: 0
 
 **--fmt** *format*  
 default: same as source  
-<ul>Image format to convert images to. One of: <i>jpeg, webp, webpll,</i> or <i>png</i> — webpll stands for lossless. Try <b>-c</b> to get an idea of how they compare, this will vary. Omitting this option will preserve the original format.</ul>
+<ul>Format to convert images to. One of: <i>jpeg, png, webp</i> or <i>webpll</i> — png and webpll are <a href='https://en.wikipedia.org/wiki/Lossless_compression'>lossless</a>. Try <b>-c</b> to get an idea of how they compare, this will vary depending on the source format. Omitting this option will preserve the original format.</ul>
 
 **--quality** *0 - 95*  
-default: 80  
-<ul>Image compression quality for lossy formats, will have a large impact on file size. Smaller values will reduce file size at the cost of visual quality. This option only applies to lossy formats</ul>
+default: 85  
+<ul>Image compression quality for lossy formats, will have a large impact on file size. Smaller values produce smaller files at the cost of visual quality. This option only applies to lossy formats</ul>
 
-<ul><b>Note:</b> values higher than 95 will usually <b>increase</b> file size without actually improving quality.</ul>
+<ul><b>Notes:</b>
+
+<ul>Low values degrade image quality less in WebP than they do in JPEG. Similarly, grayscale images are less affected by this setting that color ones, so you can lower it a bit more when using <b>--fmt webp</b> or <b>--grayscale</b>.</ul>
+
+<ul>Values higher than 95 will usually <b>increase</b> file size without actually improving quality.</ul></ul>
 
 **--size** *WidthxHeight*  
 default: don't rescale  
