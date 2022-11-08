@@ -28,10 +28,6 @@ def main():
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
-    parser.add_argument( "--version",
-        dest="version",
-        action="store_true",
-        help="show version and exit")
     parser.add_argument( "-nw", "--nowrite",
         default=config.nowrite,
         dest="nowrite",
@@ -139,15 +135,26 @@ def main():
         dest="grayscale",
         action="store_true",
         help="convert images to grayscale")
+    parser.add_argument( "--version",
+        dest="show_version",
+        action="store_true",
+        help="show version and exit")
+    parser.add_argument( "--config",
+        dest="show_config",
+        action="store_true",
+        help="show current settings")
     args, unknown_args = parser.parse_known_args()
-    if args.version:
-        print(f'{CMDNAME} v{__version__}')
-        exit(0)
     # this is probably not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
         if key in config.__dict__.keys():
             setattr(config, key, val)
+    if args.show_config:
+        for key, val in config.__dict__.items():
+            print(f"{key} = {val}")
+    if args.show_version:
+        print(f'{CMDNAME} v{__version__}')
+        exit(0)
     # parse files
     paths = []
     for arg in unknown_args:
