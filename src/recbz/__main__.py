@@ -1,7 +1,7 @@
 import os
 import argparse
 
-from recbz import reCBZ, SHOWTITLE, CMDNAME, __version__
+from recbz import reCBZ, wrappers, SHOWTITLE, CMDNAME, __version__
 
 
 def print_title() -> None:
@@ -178,13 +178,13 @@ def main():
     mode = args.mode
     for filename in paths:
         if mode is None:
-            reCBZ.repack(filename, config)
+            wrappers.repack_fp(filename, config)
         elif mode == 1:
-            reCBZ.compare(filename, config)
+            wrappers.compare_fmts_fp(filename, config)
         elif mode == 2:
-            reCBZ.assist_repack(filename, config)
+            wrappers.assist_repack_fp(filename, config)
         elif mode == 3:
-            reCBZ.auto_repack(filename, config)
+            wrappers.auto_repack_fp(filename, config)
 
 
 if __name__ == '__main__':
