@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import recbz
-from recbz.formats import *
-from sys import argv, exit
 import time
 import os
+from sys import exit
 from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 from tempfile import TemporaryDirectory
 from functools import partial
 from shutil import get_terminal_size
+
 from PIL import Image
+
+import recbz
+from recbz.formats import *
 
 # TODO:
 # include docstrings
@@ -51,9 +53,8 @@ class Config():
         # LANCZOS sacrifices performance for optimal upscale quality
         self.resamplemethod = Image.Resampling.LANCZOS
 
-
     @property
-    def get_pcount(self) -> int:
+    def _get_pcount(self) -> int:
         default_value = 8
         if self.processes > 0:
             return self.processes
@@ -65,9 +66,8 @@ class Config():
             except AssertionError:
                 return default_value
 
-
     @property
-    def get_targetformat(self):
+    def _get_targetformat(self):
         if self.formatname in (None, ''): return None
         elif self.formatname == 'jpeg': return Jpeg
         elif self.formatname == 'png': return Png
@@ -75,9 +75,8 @@ class Config():
         elif self.formatname == 'webpll': return WebpLossless
         else: return None
 
-
     @property # TODO finish this
-    def get_validformats(self) -> tuple:
+    def _get_validformats(self) -> tuple:
         LossyFmt.quality = self.quality
         all_fmts = (Png, Jpeg, WebpLossy, WebpLossless)
         try:
@@ -88,9 +87,8 @@ class Config():
         assert len(valid_fmts) >= 1, "valid_formats is 0"
         return valid_fmts
 
-
     @property
-    def get_newsize(self) -> tuple:
+    def _get_newsize(self) -> tuple:
         default_value = (0,0)
         newsize = self.resolution.lower().strip()
         try:
@@ -100,10 +98,9 @@ class Config():
         except (ValueError, AssertionError):
             return default_value
 
-
     @property
-    def rescale(self) -> bool:
-        if all(self.get_newsize):
+    def _rescale(self) -> bool:
+        if all(self._get_newsize):
             return True
         else:
             return False
@@ -112,14 +109,12 @@ class Config():
 class Archive():
     source_id:str = 'Source'
 
-
     def __init__(self, filename:str, config:Config):
         if os.path.isfile(filename): self.filename:str = filename
         else: raise ValueError(f"{filename}: invalid path")
         self.conf:Config = config
         # only used in analyze(). might i move it there?
-        self.valid_formats:tuple = self.conf.get_validformats
-
+        self.valid_formats:tuple = self.conf._get_validformats
 
     def repack(self) -> tuple:
         start_t = time.perf_counter()
@@ -143,7 +138,7 @@ class Archive():
 
             # process images in place
             if self.conf.parallel:
-                pcount = min(len(source_imgs), self.conf.get_pcount)
+                pcount = min(len(source_imgs), self.conf._get_pcount)
                 with Pool(processes=pcount) as MPpool:
                     results = MPpool.map(self._transform_img, source_imgs)
             else:
@@ -192,7 +187,7 @@ class Archive():
             os.mkdir(fmtdir)
             pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
             if self.conf.parallel:
-                pcount = min(len(sample_imgs), self.conf.get_pcount)
+                pcount = min(len(sample_imgs), self.conf._get_pcount)
                 with Pool(processes=pcount) as MPpool:
                     results = MPpool.map(pfunc, sample_imgs)
             else:
@@ -246,7 +241,6 @@ class Archive():
         self._log('', progress=True)
         return summary, choices_dic, suggested_fmt, sorted_raw
 
-
     def _transform_img(self, source:str, dest=None, forceformat=None): #-> None | Str:
         start_t = time.perf_counter()
         source_stem, source_ext = os.path.splitext(source)
@@ -268,8 +262,8 @@ class Archive():
             return None
         if forceformat:
             new_fmt = forceformat
-        elif self.conf.get_targetformat is not None:
-            new_fmt = self.conf.get_targetformat
+        elif self.conf._get_targetformat is not None:
+            new_fmt = self.conf._get_targetformat
         else:
             new_fmt = source_fmt
 
@@ -283,8 +277,8 @@ class Archive():
         if self.conf.grayscale:
             log_buff += '|trans: mode L\n'
             img = img.convert('L')
-        if self.conf.rescale:
-            log_buff += f'|trans: resize to {self.conf.get_newsize}\n'
+        if self.conf._rescale:
+            log_buff += f'|trans: resize to {self.conf._get_newsize}\n'
             img = self._resize_img(img)
 
         # save
@@ -302,11 +296,9 @@ class Archive():
         self._log(f'Save img: {os.path.basename(path)}', progress=True)
         return path
 
-
-
     def _resize_img(self, img:Image.Image) -> Image.Image:
         width, height = img.size
-        newsize = self.conf.get_newsize
+        newsize = self.conf._get_newsize
         # preserve aspect ratio for landscape images
         if width > height:
             newsize = newsize[::-1]
@@ -318,7 +310,6 @@ class Archive():
         elif not self.conf.noupscale:
             img = img.resize((newsize), self.conf.resamplemethod)
         return img
-
 
     def _log(self, msg:str, progress=False) -> None:
         if self.conf.loglevel == -1:
@@ -337,7 +328,6 @@ class Archive():
             msg = msg[:max_width]
             print(f'{msg: <{max_width}}', end='\r', flush=True)
 
-
     @classmethod
     def _get_size_format(cls, b:float) -> str:
         # derived from https://github.com/x4nth055 (MIT)
@@ -349,7 +339,6 @@ class Archive():
             b /= FACTOR
         return f"{b:.2f}Y{suffix}"
 
-
     @classmethod
     def _get_pct_change(cls, base:float, new:float) -> str:
         diff = new - base
@@ -358,7 +347,6 @@ class Archive():
             return f"+{pct_change:.2f}%"
         else:
             return f"{pct_change:.2f}%"
-
 
     @classmethod
     def _diff_summary_repack(cls, base:int, new:int) -> str:
@@ -369,7 +357,6 @@ class Archive():
         basepretty = cls._get_size_format(base)
         newpretty = cls._get_size_format(new)
         return f"{cls.source_id}: {basepretty} ■ New: {newpretty} ■ {change} {verb}"
-
 
     @classmethod
     def _diff_summary_analyze(cls, totals:tuple, sample_size:int) -> str:

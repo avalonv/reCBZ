@@ -1,6 +1,7 @@
-from recbz import reCBZ, SHOWTITLE, CMDNAME, __version__
 import os
 import argparse
+
+from recbz import reCBZ, SHOWTITLE, CMDNAME, __version__
 
 
 def print_title() -> None:
