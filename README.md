@@ -41,9 +41,11 @@ Convert two volumes to lossless WebP at twice the Kindle resolution:
 
     recbz --fmt webpll --size 2250x3000 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
-To repack all .cbz files in the current directory (e.g. a series):
+To repack all books in the current directory (e.g. a series), use a '*' to match .cbz files:
 
     recbz ./*.cbz
+
+- On Windows, slashes '/' should be replaced with backslashes '\\'
 
 Automatically convert and repack all books on the 'Blame!' folder:
 

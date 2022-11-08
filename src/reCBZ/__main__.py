@@ -1,5 +1,6 @@
 import os
 import argparse
+import platform
 
 from reCBZ import archive, wrappers, SHOWTITLE, CMDNAME, __version__
 
@@ -14,6 +15,23 @@ def print_title() -> None:
                        f"{align}├┬┘├┤ │  ├┴┐┌─┘ ├─┘└┬┘\n"
                        f"{align}┴└─└─┘└─┘└─┘└─┘o┴   ┴")
     print(title_multiline)
+
+
+def unix_like_glob(arglist:tuple) -> str:
+    """What we're essentially trying to supplant here is powershell's obtuse
+    Get-ChildItem 'pattern' | foreach {cmd $_.FullName}, because it's just
+    ridiculous expecting users to memorize that when a simple asterisk could do
+    the job. PS if you're using Windows this is a reminder your OS SUCKS ASS"""
+    import glob
+
+    new = []
+    for arg in arglist:
+        if '*' in arg:
+            new.extend(glob.glob(str(arg)))
+        else:
+            new.append(arg)
+
+    return new
 
 
 def main():
@@ -156,7 +174,10 @@ def main():
     if args.show_version:
         print(f'{CMDNAME} v{__version__}')
         exit(0)
+
     # parse files
+    if platform.system() == 'Windows':
+        unknown_args = unix_like_glob(unknown_args)
     paths = []
     for arg in unknown_args:
         if os.path.isfile(arg):
