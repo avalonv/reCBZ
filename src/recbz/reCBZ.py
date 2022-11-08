@@ -11,11 +11,7 @@ from multiprocessing.pool import ThreadPool
 from tempfile import TemporaryDirectory
 from functools import partial
 from shutil import get_terminal_size
-try:
-    from PIL import Image
-except ModuleNotFoundError:
-    print("Please install Pillow!\nrun 'pip3 install pillow'")
-    exit(1)
+from PIL import Image
 
 # TODO:
 # include docstrings
@@ -24,10 +20,14 @@ except ModuleNotFoundError:
 
 # limit output message width. ignored if verbose
 TERM_COLUMNS, TERM_LINES = get_terminal_size()
-assert TERM_COLUMNS > 0 and TERM_LINES > 0, "can't determine terminal size"
-if TERM_COLUMNS > 120: max_width = 120
-elif TERM_COLUMNS < 30: max_width= 30
-else: max_width = TERM_COLUMNS - 2
+try:
+    assert TERM_COLUMNS > 0 and TERM_LINES > 0
+    if TERM_COLUMNS > 120: max_width = 120
+    elif TERM_COLUMNS < 30: max_width = 30
+    else: max_width = TERM_COLUMNS - 2
+except AssertionError:
+    print("[!] Can't determine terminal size, defaulting to 80 cols")
+    max_width = 80
 
 
 class Config():
