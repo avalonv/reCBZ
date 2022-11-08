@@ -12,8 +12,8 @@ from shutil import get_terminal_size
 
 from PIL import Image
 
-import recbz
-from recbz.formats import *
+import reCBZ
+from reCBZ.formats import *
 
 # TODO:
 # include docstrings
@@ -34,22 +34,22 @@ except AssertionError:
 
 class Config():
     def __init__(self):
-        self.overwrite:bool = recbz.OVERWRITE
-        self.force:bool = recbz.FORCE
-        self.loglevel:int = recbz.LOGLEVEL
-        self.parallel:bool = recbz.PARALLEL
-        self.processes:int = recbz.PROCESSES
-        self.zipext:str = recbz.ZIPEXT
-        self.compresslevel:int = recbz.COMPRESSLEVEL
-        self.comparesamples:int = recbz.COMPARESAMPLES
-        self.nowrite:bool = recbz.NOWRITE
-        self.blacklistedfmts:str = recbz.BLACKLISTEDFMTS
-        self.formatname:str = recbz.FORMATNAME
-        self.quality:int = recbz.QUALITY
-        self.resolution:str = recbz.RESOLUTION
-        self.noupscale:bool = recbz.NOUPSCALE
-        self.nodownscale:bool = recbz.NODOWNSCALE
-        self.grayscale:bool = recbz.GRAYSCALE
+        self.overwrite:bool = reCBZ.OVERWRITE
+        self.force:bool = reCBZ.FORCE
+        self.loglevel:int = reCBZ.LOGLEVEL
+        self.parallel:bool = reCBZ.PARALLEL
+        self.processes:int = reCBZ.PROCESSES
+        self.zipext:str = reCBZ.ZIPEXT
+        self.compresslevel:int = reCBZ.COMPRESSLEVEL
+        self.comparesamples:int = reCBZ.COMPARESAMPLES
+        self.nowrite:bool = reCBZ.NOWRITE
+        self.blacklistedfmts:str = reCBZ.BLACKLISTEDFMTS
+        self.formatname:str = reCBZ.FORMATNAME
+        self.quality:int = reCBZ.QUALITY
+        self.resolution:str = reCBZ.RESOLUTION
+        self.noupscale:bool = reCBZ.NOUPSCALE
+        self.nodownscale:bool = reCBZ.NODOWNSCALE
+        self.grayscale:bool = reCBZ.GRAYSCALE
         # LANCZOS sacrifices performance for optimal upscale quality
         self.resamplemethod = Image.Resampling.LANCZOS
 

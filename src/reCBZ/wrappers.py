@@ -1,6 +1,6 @@
 from os import path
 
-from recbz.reCBZ import Archive, Config
+from reCBZ.archive import Archive, Config
 
 
 def compare_fmts_fp(filename:str, config=Config()) -> None:

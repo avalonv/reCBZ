@@ -31,7 +31,7 @@ dev = ["bumpver", "pip-tools",]
 Homepage = "https://github.com/avalonv/reCBZ"
 
 [project.scripts]
-reCBZ = "recbz.__main__:main"
+recbz = "reCBZ.__main__:main"
 
 [tool.bumpver]
 current_version = "1.0.0"
@@ -43,4 +43,4 @@ push = false
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
-"src/recbz/__init__.py" = ["{version}"]
+"src/reCBZ/__init__.py" = ["{version}"]

@@ -22,7 +22,7 @@ or build from source:
 
 ## Usage
 
-    reCBZ [options] files
+    recbz [options] files
 
 Accepts a valid .cbz or .zip file, or a collection of files. With no arguments passed, it will repack the file(s) with slightly higher compression while retaining the original format.
 
@@ -35,23 +35,23 @@ The output file(s) will always be saved as `filename [reCBZ].extension`, unless 
 
 Convert 'Blame! Master Edition v06.cbz' to various formats and ask which one to repack with:
 
-    reCBZ --assist 'Blame! Master Edition v06.cbz'
+    recbz --assist 'Blame! Master Edition v06.cbz'
 
 Convert two volumes to lossless WebP at twice the Kindle resolution:
 
-    reCBZ --fmt webpll --size 2250x3000 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
+    recbz --fmt webpll --size 2250x3000 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
-To repack all .cbz files in the current directory (e.g. a series), use (TODO/unavailable on Windows):
+To repack all .cbz files in the current directory (e.g. a series):
 
-    reCBZ ./*.cbz
+    recbz ./*.cbz
 
 Automatically convert and repack all books on the 'Blame!' folder:
 
-    reCBZ --auto ./'Blame!'/*.cbz
+    recbz --auto ./'Blame!'/*.cbz
 
 Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale and save as high quality JPEG:
 
-    reCBZ --size 1440x1920 -bw --quality 90 --fmt jpeg ./Saga/*.cbz
+    recbz --size 1440x1920 -bw --quality 90 --fmt jpeg ./Saga/*.cbz
 </details>
 
 ## Configuration

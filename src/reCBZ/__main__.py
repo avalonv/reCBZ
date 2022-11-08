@@ -1,13 +1,13 @@
 import os
 import argparse
 
-from recbz import reCBZ, wrappers, SHOWTITLE, CMDNAME, __version__
+from reCBZ import archive, wrappers, SHOWTITLE, CMDNAME, __version__
 
 
 def print_title() -> None:
-    align = int(reCBZ.TERM_COLUMNS / 2) - 11
+    align = int(archive.TERM_COLUMNS / 2) - 11
     if align > 21: align = 21
-    if align + 22 > reCBZ.TERM_COLUMNS or align < 0:
+    if align + 22 > archive.TERM_COLUMNS or align < 0:
         align = 0
     align = align * ' '
     title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
@@ -18,7 +18,7 @@ def print_title() -> None:
 
 def main():
     # o god who art in heaven please guard mine anime girls
-    config = reCBZ.Config()
+    config = archive.Config()
     readme='https://github.com/avalonv/reCBZ/blob/master/README.md#usage'
     parser = argparse.ArgumentParser(
             prog=CMDNAME,

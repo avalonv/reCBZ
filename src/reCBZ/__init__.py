@@ -5,9 +5,9 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 __version__ = "1.0.0"
-CMDNAME = 'reCBZ'
+CMDNAME = 'recbz'
 
-_cfg = tomllib.loads(resources.read_text("recbz", "config.toml"))
+_cfg = tomllib.loads(resources.read_text("reCBZ", "config.toml"))
 OVERWRITE = _cfg["archive"]["overwrite"]
 FORCE = _cfg["archive"]["force"]
 LOGLEVEL = _cfg["archive"]["loglevel"]
