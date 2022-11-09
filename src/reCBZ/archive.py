@@ -177,7 +177,7 @@ class Archive():
             new_size = os.path.getsize(new_path)
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
-        diff = Archive._diff_summary_repack(source_size, new_size)
+        diff = self._summary_diff_archive(source_size, new_size)
         self._log('', progress=True)
         return new_path, elapsed, diff
 
@@ -205,41 +205,41 @@ class Archive():
         compressed_files = source_zip.namelist()
 
         # select x images from the middle of the archive, in increments of two
-        sample_size = self.conf.comparesamples
-        if sample_size * 2 > len(compressed_files):
-            raise ValueError(f"{self.filename} is smaller than sample_size * 2")
+        sample_count = self.conf.comparesamples
+        if sample_count * 2 > len(compressed_files):
+            raise ValueError(f"{self.filename} is smaller than sample_count * 2")
         delta = int(len(compressed_files) / 2)
-        sample_imgs = compressed_files[delta-sample_size:delta+sample_size:2]
+        source_imgs = compressed_files[delta-sample_count:delta+sample_count:2]
 
         # extract them and compute their size
-        size_totals = []
+        fmt_fsizes = []
         with TemporaryDirectory() as tempdir:
-            for name in sample_imgs:
+            for name in source_imgs:
                 source_zip.extract(name, tempdir)
             source_zip.close()
-            sample_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
+            source_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
                             in os.walk(tempdir) for f in fnames]
-            nbytes = sum(os.path.getsize(f) for f in sample_imgs)
-            sample_fmt = determine_format(Image.open(sample_imgs[0]))
-            size_totals = [(nbytes, f'{sample_fmt.desc} ({Archive.source_id})',
-                           sample_fmt.name)]
+            nbytes = sum(os.path.getsize(f) for f in source_imgs)
+            source_fmt = determine_format(Image.open(source_imgs[0]))
+            source_fsize = (nbytes, f'{Archive.source_id} ({source_fmt.desc})',
+                            source_fmt.name)
             # also compute the size of each valid format after converting
-            pfunc = partial(test_fmt, sample_imgs, tempdir)
+            pfunc = partial(test_fmt, source_imgs, tempdir)
             if self.conf.parallel:
                 with ThreadPool(processes=len(self.valid_formats)) as Tpool:
-                    size_totals.extend(Tpool.map(pfunc, self.valid_formats))
+                    fmt_fsizes.extend(Tpool.map(pfunc, self.valid_formats))
             else:
-                size_totals.extend(map(pfunc, self.valid_formats))
+                fmt_fsizes.extend(map(pfunc, self.valid_formats))
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
-        sorted_raw = tuple(sorted(size_totals))
-        summary = Archive._diff_summary_analyze(sorted_raw, sample_size)
-        choices_dic = {i : total[2] for i, total in enumerate(sorted_raw)}
-        suggested_fmt = {"desc": sorted_raw[0][1], "name": sorted_raw[0][2]}
-        self._log(str(sorted_raw))
+        sorted_fmts = tuple(sorted(fmt_fsizes))
+        summary = self._summary_diff_fmts(source_fsize, sorted_fmts)
+        choices_dic = {i : total[2] for i, total in enumerate(sorted_fmts)}
+        suggested_fmt = {"desc":sorted_fmts[0][1], "name":sorted_fmts[0][2]}
+        self._log(str(sorted_fmts))
         self._log('', progress=True)
-        return summary, choices_dic, suggested_fmt, sorted_raw
+        return summary, choices_dic, suggested_fmt, sorted_fmts
 
     def _transform_img(self, source:str, dest=None, forceformat=None): #-> None | Str:
         start_t = time.perf_counter()
@@ -328,6 +328,35 @@ class Archive():
             msg = msg[:max_width]
             print(f'{msg: <{max_width}}', end='\r', flush=True)
 
+    def _summary_diff_fmts(self, base:tuple, totals:tuple) -> str:
+        summary = f'┌─ Disk size ({self.conf.comparesamples}' + \
+                   ' pages) with present settings:\n'
+        # justify to the left and right respectively. effectively the same
+        # as using f'{part1: <25} | {part2: >8}\n'
+        part1 = f'│   {base[1]}'.ljust(25)
+        part2 = f'{Archive._get_size_format(base[0])}'.rjust(8)
+        summary += f'{part1} {part2} |  0.00%\n'
+        for i, total in enumerate(totals):
+            if i == len(totals)-1:
+                prefix = '└─'
+            else:
+                prefix = '├─'
+            change = Archive._get_pct_change(base[0], total[0])
+            part1 = f'{prefix}{i+1} {total[1]}'.ljust(25)
+            part2 = f'{Archive._get_size_format(total[0])}'.rjust(8)
+            summary += f'{part1} {part2} | {change}\n'
+        return summary[0:-1] # strip last newline
+
+    def _summary_diff_archive(self, base:int, new:int) -> str:
+        verb = 'decrease'
+        if new > base:
+            verb = 'INCREASE!'
+        change = Archive._get_pct_change(base, new)
+        basepretty = Archive._get_size_format(base)
+        newpretty = Archive._get_size_format(new)
+        return f'{Archive.source_id}: {basepretty} ■ New:' + \
+               f'{newpretty} ■ {change} {verb}'
+
     @classmethod
     def _get_size_format(cls, b:float) -> str:
         # derived from https://github.com/x4nth055 (MIT)
@@ -347,34 +376,3 @@ class Archive():
             return f"+{pct_change:.2f}%"
         else:
             return f"{pct_change:.2f}%"
-
-    @classmethod
-    def _diff_summary_repack(cls, base:int, new:int) -> str:
-        verb = 'decrease'
-        if new > base:
-            verb = 'INCREASE!'
-        change = cls._get_pct_change(base, new)
-        basepretty = cls._get_size_format(base)
-        newpretty = cls._get_size_format(new)
-        return f"{cls.source_id}: {basepretty} ■ New: {newpretty} ■ {change} {verb}"
-
-    @classmethod
-    def _diff_summary_analyze(cls, totals:tuple, sample_size:int) -> str:
-        base = [total[0] for total in totals if cls.source_id in total[1]][0]
-        summary = f'┌─ Disk size ({sample_size} pages) with present settings:\n'
-        for i, total in enumerate(totals):
-            if i == len(totals)-1:
-                prefix = '└─'
-            # elif i == 0:
-            #     prefix = '┌───'
-            else:
-                prefix = '├─'
-            change = cls._get_pct_change(base, total[0])
-            fmt_name = total[1]
-            human_size = cls._get_size_format(total[0])
-            # justify to the left and right respectively. effectively the same
-            # as using f'{part1: <25} | {part2: >8}\n'
-            part1 = f'{prefix}■{i+1} {fmt_name}'.ljust(25)
-            part2 = f'{human_size}'.rjust(8)
-            summary += f'{part1} {part2} | {change}\n'
-        return summary[0:-1] # strip last newline
