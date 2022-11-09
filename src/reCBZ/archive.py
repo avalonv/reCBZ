@@ -123,7 +123,7 @@ class Archive():
             source_zip = ZipFile(self.filename)
         except BadZipFile as err:
             print(f"[Fatal] '{self.filename}': not a zip file")
-            exit(2)
+            raise err
         source_size = os.path.getsize(self.filename)
         source_stem = os.path.splitext(str(source_zip.filename))[0]
         # extract all
@@ -201,7 +201,7 @@ class Archive():
             source_zip = ZipFile(self.filename)
         except BadZipFile as err:
             print(f"[Fatal] '{self.filename}': not a zip file")
-            exit(2)
+            raise err
         compressed_files = source_zip.namelist()
 
         # select x images from the middle of the archive, in increments of two
