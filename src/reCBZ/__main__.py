@@ -17,7 +17,7 @@ def print_title() -> None:
     print(title_multiline)
 
 
-def unix_like_glob(arglist:tuple) -> str:
+def unix_like_glob(arglist:list) -> list:
     """What we're essentially trying to supplant here is powershell's obtuse
     Get-ChildItem 'pattern' | foreach {cmd $_.FullName}, because it's just
     ridiculous expecting users to memorize that when a simple asterisk could do
@@ -183,7 +183,7 @@ def main():
         if os.path.isfile(arg):
             paths.append(arg)
         elif os.path.isdir(arg):
-            print(f'{arg}: is a directory')
+            print(f'{CMDNAME}: {arg}: is a directory')
             parser.print_usage()
             exit(1)
         else:
@@ -191,7 +191,7 @@ def main():
             print(f'\nunknown file or option: {arg}')
             exit(1)
     if len(paths) <= 0:
-        print(f'missing input file (see --help)')
+        print(f'{CMDNAME}: missing input file (see --help)')
         parser.print_usage()
         exit(1)
     # everything passed
