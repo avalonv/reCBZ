@@ -2,16 +2,14 @@
 # -*- coding: utf-8 -*-
 import time
 import os
+import tempfile
+import shutil
 from sys import exit
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
-from tempfile import TemporaryDirectory, TemporaryFile, mkdtemp
-import tempfile
 from functools import partial
-import shutil
-import glob
-import pathlib
+from pathlib import Path
 
 from PIL import Image
 
@@ -20,8 +18,6 @@ from reCBZ.formats import *
 
 # TODO:
 # include docstrings
-# consider replacing os.path with pathlib, as it might be simpler:
-# https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
 # limit output message width. ignored if verbose
 TERM_COLUMNS, TERM_LINES = shutil.get_terminal_size()
@@ -114,15 +110,15 @@ class Archive():
     temp_prefix:str = f'{reCBZ.CMDNAME}CACHE_'
 
     def __init__(self, filename:str, config:Config):
-        if os.path.isfile(filename):
-            self.source_path:str = filename
+        if Path(filename).exists():
+            self.source_path:Path = Path(filename)
         else:
             raise ValueError(f"{filename}: invalid path")
-        self.source_size = os.path.getsize(self.source_path)
-        self.source_stem = os.path.splitext(str(self.source_path))[0]
+        self.source_size = self.source_path.stat().st_size
+        self.source_stem = self.source_path.stem
         self.conf:Config = config
         self.valid_formats:tuple = self.conf._get_validformats
-        self.tempdir:str = tempfile.mkdtemp(prefix=f'{self.temp_prefix}')
+        self.tempdir:Path = Path('.')
         self._unpacked:list = []
 
     def fetch_unpacked(self):
@@ -140,6 +136,7 @@ class Archive():
             self._log(f'{path} exists, cleaning up')
             shutil.rmtree(path)
 
+        self.tempdir = Path(tempfile.mkdtemp(prefix=f'{self.temp_prefix}'))
         try:
             source_zip = ZipFile(self.source_path)
         except BadZipFile as err:
@@ -158,15 +155,15 @@ class Archive():
         self._log(f'Extracting: {self.source_path}', progress=True)
         for file in compressed_files:
             source_zip.extract(file, self.tempdir)
-        unpacked = [os.path.join(dpath,f) for (dpath, dnames, fnames)
-                    in os.walk(self.tempdir) for f in fnames]
+        # god bless you Georgy https://stackoverflow.com/a/50927977/
+        unpacked = list(filter(Path.is_file, Path(self.tempdir).rglob('*')))
         return unpacked
 
     def repack(self) -> tuple:
         start_t = time.perf_counter()
 
         # extract all and process images in place
-        source_imgs = self.get_unpacked()
+        source_imgs = self.fetch_unpacked()
         if self.conf.parallel:
             pcount = min(len(source_imgs), self.conf._get_pcount)
             with Pool(processes=pcount) as MPpool:
@@ -188,31 +185,32 @@ class Archive():
         if self.conf.overwrite:
             new_path = self.source_path
         else:
-            new_path = f'{self.source_stem} [reCBZ]{self.conf.zipext}'
+            new_path = Path(f'{self.source_stem} [reCBZ]{self.conf.zipext}')
 
         # write to new local archive
         if self.conf.nowrite:
             end_t = time.perf_counter()
             elapsed = f'{end_t - start_t:.2f}s'
             return (self.source_path, elapsed, 'Dry run')
-        elif os.path.exists(new_path):
+        elif new_path.exists():
             self._log(f'{new_path} exists, removing...')
-            os.remove(new_path)
+            new_path.unlink()
         new_zip = ZipFile(new_path,'w')
         self._log(f'Write {self.conf.zipext}: {new_path}', progress=True)
         for source in imgs_abspath:
             try:
-                dest = pathlib.PurePath(source).relative_to(self.tempdir)
-                # minor change in filesize. TODO further testing on how it
+                dest = Path(source).relative_to(self.tempdir)
+                # minimal effect on filesize. TODO further testing on how it
                 # affects time to open in an ereader required
                 new_zip.write(source, dest, ZIP_DEFLATED, 9)
                 # new_zip.write(source, dest)
-            except ValueError as err:
-                print('PurePath is being screwy. Does tempdir exist?', end='\r')
-                print(os.path.exists(self.tempdir))
-                raise err
+            except ValueError:
+                msg = 'Path is being screwy. Does tempdir exist? '
+                msg += str(self.tempdir.exists())
+                msg += '\nwe might not have joined paths correctly in trans img'
+                raise ValueError(msg)
         new_zip.close()
-        new_size = os.path.getsize(new_path)
+        new_size = new_path.stat().st_size
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
         diff = self._summary_diff_archive(self.source_size, new_size)
@@ -221,8 +219,8 @@ class Archive():
 
     def analyze(self) -> tuple:
         def compute_fmt_size(sample_imgs, tempdir, fmt) -> tuple:
-            fmtdir = os.path.join(tempdir, fmt.name)
-            os.mkdir(fmtdir)
+            fmtdir = Path.joinpath(tempdir, fmt.name)
+            Path.mkdir(fmtdir)
             pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
             if self.conf.parallel:
                 pcount = min(len(sample_imgs), self.conf._get_pcount)
@@ -231,13 +229,13 @@ class Archive():
             else:
                 results = map(pfunc, sample_imgs)
             converted_imgs = [path for path in results if path]
-            nbytes = sum(os.path.getsize(f) for f in converted_imgs)
+            nbytes = sum(Path(f).stat().st_size for f in converted_imgs)
             return nbytes, fmt.desc, fmt.name
 
         # extract images and compute their original size
         # these aren't saved to cache
         source_imgs = self.unpack(count=self.conf.comparesamples)
-        nbytes = sum(os.path.getsize(f) for f in source_imgs)
+        nbytes = sum(Path(f).stat().st_size for f in source_imgs)
         source_fmt = determine_format(Image.open(source_imgs[0]))
         source_fsize = (nbytes, f'{Archive.source_id} ({source_fmt.desc})',
                         source_fmt.name)
@@ -260,13 +258,11 @@ class Archive():
         self._log('', progress=True)
         return summary, choices_dic, suggested_fmt, sorted_fmts
 
-    def _transform_img(self, source:str, dest=None, forceformat=None): #-> None | Str:
-        start_t = time.perf_counter()
-        source_stem, source_ext = os.path.splitext(source)
-        source_ext = source_ext.lower()
+    def _transform_img(self, source:Path, dest=None, forceformat=None): #-> None | Str:
         # open
+        start_t = time.perf_counter()
         try:
-            self._log(f'Read img: {os.path.basename(source)}', progress=True)
+            self._log(f'Read img: {source.name}', progress=True)
             log_buff = f'/open:  {source}\n'
             img = Image.open(source)
         except IOError:
@@ -294,7 +290,7 @@ class Archive():
 
         # transform
         if self.conf.grayscale:
-            log_buff += '|trans: mode L\n'
+            log_buff += '|trans: mode L\n' # me lol
             img = img.convert('L')
         if self.conf._rescale:
             log_buff += f'|trans: resize to {self.conf._get_newsize}\n'
@@ -302,18 +298,17 @@ class Archive():
 
         # save
         ext:str = new_fmt.ext[0]
-        path:str
         if dest:
-            path = os.path.join(dest, f'{os.path.basename(source_stem)}{ext}')
+            p = Path.joinpath(dest, f'{source.name}{ext}')
         else:
-            path = f'{source_stem}{ext}'
+            p = Path.joinpath(source.parents[0], f'{source.name}{ext}')
         log_buff += f'|trans: {source_fmt.name} -> {new_fmt.name}\n'
-        new_fmt.save(img, path)
+        new_fmt.save(img, p)
         end_t = time.perf_counter()
         elapsed = f'{end_t-start_t:.2f}s'
-        self._log(f'{log_buff}\\write: {path}: took {elapsed}')
-        self._log(f'Save img: {os.path.basename(path)}', progress=True)
-        return path
+        self._log(f'{log_buff}\\write: {p}: took {elapsed}')
+        self._log(f'Save img: {p.name}', progress=True)
+        return p
 
     def _resize_img(self, img:Image.Image) -> Image.Image:
         width, height = img.size
@@ -353,7 +348,7 @@ class Archive():
         # justify to the left and right respectively. effectively the same
         # as using f'{part1: <25} | {part2: >8}\n'
         part1 = f'│   {base[1]}'.ljust(25)
-        part2 = f'{Archive._get_size_format(base[0])}'.rjust(8)
+        part2 = f'{Archive._get_human_size(base[0])}'.rjust(8)
         summary += f'{part1} {part2} |  0.00%\n'
         for i, total in enumerate(totals):
             if i == len(totals)-1:
@@ -362,7 +357,7 @@ class Archive():
                 prefix = '├─'
             change = Archive._get_pct_change(base[0], total[0])
             part1 = f'{prefix}{i+1} {total[1]}'.ljust(25)
-            part2 = f'{Archive._get_size_format(total[0])}'.rjust(8)
+            part2 = f'{Archive._get_human_size(total[0])}'.rjust(8)
             summary += f'{part1} {part2} | {change}\n'
         return summary[0:-1] # strip last newline
 
@@ -371,13 +366,13 @@ class Archive():
         if new > base:
             verb = 'INCREASE!'
         change = Archive._get_pct_change(base, new)
-        basepretty = Archive._get_size_format(base)
-        newpretty = Archive._get_size_format(new)
+        basepretty = Archive._get_human_size(base)
+        newpretty = Archive._get_human_size(new)
         return f'{Archive.source_id}: {basepretty} ■ New:' + \
                f'{newpretty} ■ {change} {verb}'
 
     @classmethod
-    def _get_size_format(cls, b:float) -> str:
+    def _get_human_size(cls, b:float) -> str:
         # derived from https://github.com/x4nth055 (MIT)
         suffix = "B"
         FACTOR = 1024
