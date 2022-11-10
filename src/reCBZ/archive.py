@@ -348,7 +348,7 @@ class Archive():
                    ' pages) with present settings:\n'
         # justify to the left and right respectively. effectively the same
         # as using f'{part1: <25} | {part2: >8}\n'
-        part1 = f'│   {base[1]}'.ljust(25)
+        part1 = f'│   {base[1]}'.ljust(37)
         part2 = f'{Archive._get_human_size(base[0])}'.rjust(8)
         summary += f'{part1} {part2} |  0.00%\n'
         for i, total in enumerate(totals):
@@ -357,7 +357,7 @@ class Archive():
             else:
                 prefix = '├─'
             change = Archive._get_pct_change(base[0], total[0])
-            part1 = f'{prefix}{i+1} {total[1]}'.ljust(25)
+            part1 = f'{prefix}{i+1} {total[1]}'.ljust(37)
             part2 = f'{Archive._get_human_size(total[0])}'.rjust(8)
             summary += f'{part1} {part2} | {change}\n'
         return summary[0:-1] # strip last newline

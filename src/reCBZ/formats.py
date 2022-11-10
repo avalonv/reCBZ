@@ -64,12 +64,11 @@ def determine_format(img:Image.Image):
     elif PIL_fmt == "JPEG":
         return Jpeg
     elif PIL_fmt == "WEBP":
-        # it's possible to test but doesn't appear to be very reliable :(
         # https://github.com/python-pillow/Pillow/discussions/6716
-        # with open(img.filename, "rb") as fp:
-        #     if fp.read(15)[-1:] == b"L":
-        #         return WebpLossless
-        #     else:
-        return WebpLossy
+        with open(img.filename, "rb") as fp:
+            if fp.read(16)[-1:] == b"L":
+                return WebpLossless
+            else:
+                return WebpLossy
     else:
         raise KeyError(f"'{PIL_fmt}': invalid format")
