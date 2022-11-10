@@ -203,16 +203,19 @@ def main():
     if SHOWTITLE: print_title()
     mode = args.mode
     for filename in paths:
-        if mode is None:
-            wrappers.repack_fp(filename, config)
-        elif mode == 0:
-            wrappers.unpack_fp(filename, config)
-        elif mode == 1:
-            wrappers.compare_fmts_fp(filename, config)
-        elif mode == 2:
-            wrappers.assist_repack_fp(filename, config)
-        elif mode == 3:
-            wrappers.auto_repack_fp(filename, config)
+        try:
+            if mode is None:
+                wrappers.repack_fp(filename, config)
+            elif mode == 0:
+                wrappers.unpack_fp(filename, config)
+            elif mode == 1:
+                wrappers.compare_fmts_fp(filename, config)
+            elif mode == 2:
+                wrappers.assist_repack_fp(filename, config)
+            elif mode == 3:
+                wrappers.auto_repack_fp(filename, config)
+        except InterruptedError:
+            continue
 
 
 if __name__ == '__main__':

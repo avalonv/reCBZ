@@ -176,12 +176,12 @@ class Archive():
         discarded = len(source_imgs) - len(imgs_abspath)
         if discarded > 0:
             self._log('', progress=True)
-            print(f"[!] {discarded} files had errors and had to be discarded.")
+            print(f"[!] {discarded} files had errors and will be discarded.")
             if not self.conf.force:
-                reply = input("■─■ Proceed with overwriting? [y/n]").lower()
+                reply = input("■─■ Proceed with writing archive? [y/n]").lower()
                 if reply not in ('y', 'yes'):
                     print('[!] Aborting')
-                    exit(1)
+                    return ('ABORTED', )
         if self.conf.overwrite:
             new_path = self.source_path
         else:
