@@ -215,6 +215,7 @@ class Archive():
         elapsed = f'{end_t - start_t:.2f}s'
         diff = self._summary_diff_archive(self.source_size, new_size)
         self._log('', progress=True)
+        print(new_path)
         return new_path, elapsed, diff
 
     def analyze(self) -> tuple:
@@ -299,9 +300,9 @@ class Archive():
         # save
         ext:str = new_fmt.ext[0]
         if dest:
-            p = Path.joinpath(dest, f'{source.name}{ext}')
+            p = Path.joinpath(dest, f'{source.stem}{ext}')
         else:
-            p = Path.joinpath(source.parents[0], f'{source.name}{ext}')
+            p = Path.joinpath(source.parents[0], f'{source.stem}{ext}')
         log_buff += f'|trans: {source_fmt.name} -> {new_fmt.name}\n'
         new_fmt.save(img, p)
         end_t = time.perf_counter()
