@@ -52,6 +52,11 @@ def main():
         dest="nowrite",
         action="store_true",
         help="dry run, no changes are saved at the end of repacking (safe)")
+    mode_group.add_argument( "-u", "--unpack",
+        const=0,
+        dest="mode",
+        action="store_const",
+        help="unpack the archive to the currect directory (safe)")
     mode_group.add_argument( "-c", "--compare",
         const=1,
         dest="mode",
@@ -200,6 +205,8 @@ def main():
     for filename in paths:
         if mode is None:
             wrappers.repack_fp(filename, config)
+        elif mode == 0:
+            wrappers.unpack_fp(filename, config)
         elif mode == 1:
             wrappers.compare_fmts_fp(filename, config)
         elif mode == 2:

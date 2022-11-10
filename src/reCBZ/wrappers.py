@@ -10,6 +10,16 @@ def compare_fmts_fp(filename:str, config=Config()) -> None:
     print(results[0])
 
 
+def unpack_fp(filename:str, config=Config()) -> None:
+    """Unpack the archive, converting all images within
+    Returns path to repacked archive"""
+    print('[!] Repacking', filename)
+    unpacked = Archive(filename, config).unpack()
+    for file in unpacked:
+        print(file)
+    exit(1)
+
+
 def repack_fp(filename:str, config=Config()) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""

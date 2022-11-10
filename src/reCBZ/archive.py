@@ -3,12 +3,15 @@
 import time
 import os
 from sys import exit
-from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
+from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, TemporaryFile, mkdtemp
+import tempfile
 from functools import partial
-from shutil import get_terminal_size
+import shutil
+import glob
+import pathlib
 
 from PIL import Image
 
@@ -21,7 +24,7 @@ from reCBZ.formats import *
 # https://docs.python.org/3/library/pathlib.html#correspondence-to-tools-in-the-os-module
 
 # limit output message width. ignored if verbose
-TERM_COLUMNS, TERM_LINES = get_terminal_size()
+TERM_COLUMNS, TERM_LINES = shutil.get_terminal_size()
 try:
     assert TERM_COLUMNS > 0 and TERM_LINES > 0
     if TERM_COLUMNS > 120: max_width = 120
@@ -108,81 +111,116 @@ class Config():
 
 class Archive():
     source_id:str = 'Source'
+    temp_prefix:str = f'{reCBZ.CMDNAME}CACHE_'
 
     def __init__(self, filename:str, config:Config):
-        if os.path.isfile(filename): self.filename:str = filename
-        else: raise ValueError(f"{filename}: invalid path")
+        if os.path.isfile(filename):
+            self.source_path:str = filename
+        else:
+            raise ValueError(f"{filename}: invalid path")
+        self.source_size = os.path.getsize(self.source_path)
+        self.source_stem = os.path.splitext(str(self.source_path))[0]
         self.conf:Config = config
-        # only used in analyze(). might i move it there?
         self.valid_formats:tuple = self.conf._get_validformats
+        self.tempdir:str = tempfile.mkdtemp(prefix=f'{self.temp_prefix}')
+        self._unpacked:list = []
+
+    def fetch_unpacked(self):
+        # caches images for later use, useful for repacking to two book formats
+        # at the same time (e.g. epub and cbz)
+        if len(self._unpacked) == 0:
+            self._unpacked = self.unpack()
+        return self._unpacked
+
+    def unpack(self, count:int=0) -> list:
+        # check and clean previous tempdirs
+        prev_dirs = Path(tempfile.gettempdir()).glob(f'{self.temp_prefix}*')
+        for path in prev_dirs:
+            assert path != tempfile.gettempdir() # for the love of god
+            self._log(f'{path} exists, cleaning up')
+            shutil.rmtree(path)
+
+        try:
+            source_zip = ZipFile(self.source_path)
+        except BadZipFile as err:
+            print(f"[Fatal] '{self.source_path}': not a zip file")
+            raise ValueError
+
+        compressed_files = source_zip.namelist()
+        assert len(compressed_files) >= 1, 'no files in archive'
+        if count > 0:
+            # select x images from the middle of the archive, in increments of 2
+            if count * 2 > len(compressed_files):
+                raise ValueError(f"{self.source_path} is smaller than samples * 2")
+            delta = int(len(compressed_files) / 2)
+            compressed_files = compressed_files[delta-count:delta+count:2]
+
+        self._log(f'Extracting: {self.source_path}', progress=True)
+        for file in compressed_files:
+            source_zip.extract(file, self.tempdir)
+        unpacked = [os.path.join(dpath,f) for (dpath, dnames, fnames)
+                    in os.walk(self.tempdir) for f in fnames]
+        return unpacked
 
     def repack(self) -> tuple:
         start_t = time.perf_counter()
-        self._log(f'Extracting: {self.filename}', progress=True)
-        try:
-            source_zip = ZipFile(self.filename)
-        except BadZipFile as err:
-            print(f"[Fatal] '{self.filename}': not a zip file")
-            raise err
-        source_size = os.path.getsize(self.filename)
-        source_stem = os.path.splitext(str(source_zip.filename))[0]
-        # extract all
-        with TemporaryDirectory() as tempdir:
-            source_zip.extractall(tempdir)
-            source_zip.close()
-            # https://stackoverflow.com/a/3207973/8225672 absolutely nightmarish
-            # but this is the only way to avoid problems with subfolders
-            source_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
-                            in os.walk(tempdir) for f in fnames]
-            assert len(source_imgs) >= 1, 'no files in archive'
 
-            # process images in place
-            if self.conf.parallel:
-                pcount = min(len(source_imgs), self.conf._get_pcount)
-                with Pool(processes=pcount) as MPpool:
-                    results = MPpool.map(self._transform_img, source_imgs)
-            else:
-                results = map(self._transform_img, source_imgs)
-            imgs_abspath = [path for path in results if path]
-            imgs_names = [os.path.basename(f) for f in imgs_abspath] # not unecessary (I think)
+        # extract all and process images in place
+        source_imgs = self.get_unpacked()
+        if self.conf.parallel:
+            pcount = min(len(source_imgs), self.conf._get_pcount)
+            with Pool(processes=pcount) as MPpool:
+                results = MPpool.map(self._transform_img, source_imgs)
+        else:
+            results = map(self._transform_img, source_imgs)
+        imgs_abspath = [path for path in results if path]
 
-            # sanity check
-            discarded = len(source_imgs) - len(imgs_abspath)
-            if discarded > 0:
-                self._log('', progress=True)
-                print(f"[!] {discarded} files had errors and had to be discarded.")
-            if self.conf.overwrite:
-                if discarded and not self.conf.force:
-                    reply = input("■─■ Proceed with overwriting? [y/n]").lower()
-                    if reply not in ('y', 'yes'):
-                        print('[!] Aborting')
-                        exit(1)
-                new_path = self.filename
-            else:
-                new_path = f'{source_stem} [reCBZ]{self.conf.zipext}'
+        # sanity check
+        discarded = len(source_imgs) - len(imgs_abspath)
+        if discarded > 0:
+            self._log('', progress=True)
+            print(f"[!] {discarded} files had errors and had to be discarded.")
+            if not self.conf.force:
+                reply = input("■─■ Proceed with overwriting? [y/n]").lower()
+                if reply not in ('y', 'yes'):
+                    print('[!] Aborting')
+                    exit(1)
+        if self.conf.overwrite:
+            new_path = self.source_path
+        else:
+            new_path = f'{self.source_stem} [reCBZ]{self.conf.zipext}'
 
-            if self.conf.nowrite:
-                end_t = time.perf_counter()
-                elapsed = f'{end_t - start_t:.2f}s'
-                return (self.filename, elapsed, 'Dry run')
-            # write to new local archive
-            if os.path.exists(new_path):
-                self._log(f'{new_path} exists, removing...')
-                os.remove(new_path)
-            new_zip = ZipFile(new_path,'w')
-            self._log(f'Write {self.conf.zipext}: {new_path}', progress=True)
-            for source, dest in zip(imgs_abspath, imgs_names):
-                new_zip.write(source, dest, ZIP_DEFLATED, self.conf.compresslevel)
-            new_zip.close()
-            new_size = os.path.getsize(new_path)
+        # write to new local archive
+        if self.conf.nowrite:
+            end_t = time.perf_counter()
+            elapsed = f'{end_t - start_t:.2f}s'
+            return (self.source_path, elapsed, 'Dry run')
+        elif os.path.exists(new_path):
+            self._log(f'{new_path} exists, removing...')
+            os.remove(new_path)
+        new_zip = ZipFile(new_path,'w')
+        self._log(f'Write {self.conf.zipext}: {new_path}', progress=True)
+        for source in imgs_abspath:
+            try:
+                dest = pathlib.PurePath(source).relative_to(self.tempdir)
+                # minor change in filesize. TODO further testing on how it
+                # affects time to open in an ereader required
+                new_zip.write(source, dest, ZIP_DEFLATED, 9)
+                # new_zip.write(source, dest)
+            except ValueError as err:
+                print('PurePath is being screwy. Does tempdir exist?', end='\r')
+                print(os.path.exists(self.tempdir))
+                raise err
+        new_zip.close()
+        new_size = os.path.getsize(new_path)
         end_t = time.perf_counter()
         elapsed = f'{end_t - start_t:.2f}s'
-        diff = self._summary_diff_archive(source_size, new_size)
+        diff = self._summary_diff_archive(self.source_size, new_size)
         self._log('', progress=True)
         return new_path, elapsed, diff
 
     def analyze(self) -> tuple:
-        def test_fmt(sample_imgs, tempdir, fmt) -> tuple:
+        def compute_fmt_size(sample_imgs, tempdir, fmt) -> tuple:
             fmtdir = os.path.join(tempdir, fmt.name)
             os.mkdir(fmtdir)
             pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
@@ -196,40 +234,21 @@ class Archive():
             nbytes = sum(os.path.getsize(f) for f in converted_imgs)
             return nbytes, fmt.desc, fmt.name
 
-        self._log(f'Extracting: {self.filename}', progress=True)
-        try:
-            source_zip = ZipFile(self.filename)
-        except BadZipFile as err:
-            print(f"[Fatal] '{self.filename}': not a zip file")
-            raise err
-        compressed_files = source_zip.namelist()
-
-        # select x images from the middle of the archive, in increments of two
-        sample_count = self.conf.comparesamples
-        if sample_count * 2 > len(compressed_files):
-            raise ValueError(f"{self.filename} is smaller than sample_count * 2")
-        delta = int(len(compressed_files) / 2)
-        source_imgs = compressed_files[delta-sample_count:delta+sample_count:2]
-
-        # extract them and compute their size
+        # extract images and compute their original size
+        # these aren't saved to cache
+        source_imgs = self.unpack(count=self.conf.comparesamples)
+        nbytes = sum(os.path.getsize(f) for f in source_imgs)
+        source_fmt = determine_format(Image.open(source_imgs[0]))
+        source_fsize = (nbytes, f'{Archive.source_id} ({source_fmt.desc})',
+                        source_fmt.name)
+        # also compute the size of each valid format after converting
         fmt_fsizes = []
-        with TemporaryDirectory() as tempdir:
-            for name in source_imgs:
-                source_zip.extract(name, tempdir)
-            source_zip.close()
-            source_imgs = [os.path.join(dpath,f) for (dpath, dnames, fnames)
-                            in os.walk(tempdir) for f in fnames]
-            nbytes = sum(os.path.getsize(f) for f in source_imgs)
-            source_fmt = determine_format(Image.open(source_imgs[0]))
-            source_fsize = (nbytes, f'{Archive.source_id} ({source_fmt.desc})',
-                            source_fmt.name)
-            # also compute the size of each valid format after converting
-            pfunc = partial(test_fmt, source_imgs, tempdir)
-            if self.conf.parallel:
-                with ThreadPool(processes=len(self.valid_formats)) as Tpool:
-                    fmt_fsizes.extend(Tpool.map(pfunc, self.valid_formats))
-            else:
-                fmt_fsizes.extend(map(pfunc, self.valid_formats))
+        pfunc = partial(compute_fmt_size, source_imgs, self.tempdir)
+        if self.conf.parallel:
+            with ThreadPool(processes=len(self.valid_formats)) as Tpool:
+                fmt_fsizes.extend(Tpool.map(pfunc, self.valid_formats))
+        else:
+            fmt_fsizes.extend(map(pfunc, self.valid_formats))
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
