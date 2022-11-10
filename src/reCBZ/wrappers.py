@@ -6,7 +6,9 @@ from reCBZ.archive import Archive, Config
 def compare_fmts_fp(filename:str, config=Config()) -> tuple:
     """Run a sample with each image format, return the results"""
     if config.loglevel >= 0: print('[i] Analyzing', filename)
-    return Archive(filename, config).analyze()
+    results = Archive(filename, config).analyze()
+    print(results[0])
+    return results
 
 
 def unpack_fp(filename:str, config=Config()) -> None:
@@ -37,7 +39,6 @@ def assist_repack_fp(filename:str, config=Config()) -> str:
     the rest of the archive with
     Returns path to repacked archive"""
     results = compare_fmts_fp(filename, config)
-    print(results[0])
     options = results[1]
     metavar = f'[1-{len(options)}]'
     while True:
@@ -59,7 +60,7 @@ def auto_repack_fp(filename:str, config=Config()) -> str:
     """Run a sample with each image format, then automatically pick
     the smallest format to repack the rest of the archive with
     Returns path to repacked archive"""
-    selection = compare_fmts_fp(filename, config)[2]
+    selection = Archive(filename, config).unpack()[2]
     fmt_name = selection['name']
     fmt_desc = selection['desc']
     if config.loglevel >= 0: print('[i] Proceeding with', fmt_desc)
