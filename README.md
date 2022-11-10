@@ -118,7 +118,7 @@ default: same as source
 <ul>Format to convert images to. One of: <i>jpeg, png, webp</i> or <i>webpll</i> — png and webpll are <a href='https://en.wikipedia.org/wiki/Lossless_compression'>lossless</a>. Try <b>-c</b> to get an idea of how they compare, this will vary depending on the source format. Omitting this option will preserve the original format.</ul>
 
 **--quality** *0 - 95*  
-default: 85  
+default: 80  
 <ul>Image compression quality for lossy formats, will have a large impact on file size. Smaller values produce smaller files at the cost of visual quality. This option only applies to lossy formats</ul>
 
 <ul><b>Notes:</b>
