@@ -153,9 +153,11 @@ It isn't perfect however: WebP adoption outside of web browsers has been glacial
 
 **TL;DR** If you're repacking content for the purpose of sharing with others on the web, it is **strongly** advised to avoid this format, as many devices still aren't incapable of displaying them.
 
-## Why not support .cbr and .cb7 archives?
+## Why not support fully .cbr and .cb7 archives?
 
-Both RAR (.cbr) and 7z (.cb7) are non-standard compression formats. Undoubtedly they have helped many people compress files on PC, but they are not pre-installed on most operating systems, and thus cannot be opened on most mobile devices and e-Readers without tinkering. Additionally, WinRAR is a proprietary program which limits official access to Windows, as the name suggests, which makes it annoying for future users that plan to read in other devices, and cannot be bundled with free software. 
+Currently, reading from both formats is planned, but unimplemented. Writing won't be supported.
+
+Both WinRAR (.cbr) and 7z (.cb7) are non-standard file compression programs. Undoubtedly they have helped many people compress files on PC, but they are not pre-installed on most operating systems, and thus cannot be opened on most mobile devices and e-Readers without some tinkering. Additionally, WinRAR is a proprietary program which limits official access to Windows, as the name suggests, which makes it annoying for future users that plan to read in other devices, and cannot be bundled with free software (such as this).
 
 Also, the compression algorithm used to pack images into a comic book archive has a negligible effect on the finished archive size, as the images are already compressed, so even if these programs *can* achieve higher compression ratios than zlib/zip in theory, they offer little to no advantage for image content.
 
