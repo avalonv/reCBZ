@@ -58,7 +58,7 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 
 ## Configuration
 
-### General options (no effect on file size):
+### General options (won't affect file size):
 <details>
   <summary>Click to expand</summary>
 <br>
@@ -102,13 +102,9 @@ default: all available CPUs (100% utilization)
 default: .cbz  
 <ul>Extension for the new archive, signals to the OS which mimetype to open files with (they're the same internally).</ul>
 
-**--zipcompress** *0 - 9*  
-default: 0  
-<ul>Compression strength for the archive (after images have been converted). The default (0) is <i>strongly</i> recommended, setting it to higher values is nearly always counterproductive, it will barely affect archive size (if at all) as the images are already compressed, but will significantly increase the time it takes to open it.</ul>
-
 </details>
 
-### Image options (affect file size):
+### Image options (will affect file size):
 <details>
   <summary>Click to expand</summary>
 <br>

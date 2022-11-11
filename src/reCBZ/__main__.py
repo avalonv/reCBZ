@@ -117,13 +117,13 @@ def main():
         dest="zipext",
         type=str,
         help="extension to save the new archive with")
-    parser.add_argument( "--zipcompress",
-        default=config.compresslevel,
-        choices=(range(10)),
-        metavar="[0-9]",
-        dest="compresslevel",
-        type=int,
-        help="compression level for the archive. 0 (default) recommended")
+    # parser.add_argument( "--zipcompress",
+    #     default=config.compresslevel,
+    #     choices=(range(10)),
+    #     metavar="[0-9]",
+    #     dest="compresslevel",
+    #     type=int,
+    #     help="compression level for the archive. 0 (default) recommended")
     fmt_group.add_argument( "--fmt",
         default=config.formatname,
         choices=('jpeg', 'png', 'webp', 'webpll'),
