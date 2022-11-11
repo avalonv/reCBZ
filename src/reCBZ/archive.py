@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 import reCBZ
-from reCBZ.formats import *
+from .formats import *
 
 # TODO:
 # include docstrings
@@ -114,21 +114,20 @@ class Archive():
             self.source_path:Path = Path(filename)
         else:
             raise ValueError(f"{filename}: invalid path")
-        self.source_size = self.source_path.stat().st_size
         self.source_stem = self.source_path.stem
         self.conf:Config = config
         self.valid_formats:tuple = self.conf._get_validformats
         self.tempdir:Path = Path('.')
-        self._unpacked:list = []
+        self._extracted:list = []
 
-    def fetch_unpacked(self):
-        # caches images for later use, useful for repacking to two book formats
-        # at the same time (e.g. epub and cbz)
-        if len(self._unpacked) == 0:
-            self._unpacked = self.unpack()
-        return self._unpacked
+    def fetch_extracted(self):
+        """Fetches extracted files from cache if it exists, otherwise extracts
+        them first."""
+        if len(self._extracted) == 0:
+            self._extracted = self.extract()
+        return self._extracted
 
-    def unpack(self, count:int=0) -> list:
+    def extract(self, count:int=0) -> list:
         # check and clean previous tempdirs
         prev_dirs = Path(tempfile.gettempdir()).glob(f'{self.temp_prefix}*')
         for path in prev_dirs:
@@ -156,14 +155,13 @@ class Archive():
         for file in compressed_files:
             source_zip.extract(file, self.tempdir)
         # god bless you Georgy https://stackoverflow.com/a/50927977/
-        unpacked = list(filter(Path.is_file, Path(self.tempdir).rglob('*')))
-        return unpacked
+        extracted = list(filter(Path.is_file, Path(self.tempdir).rglob('*')))
+        return extracted
 
-    def repack(self) -> tuple:
-        start_t = time.perf_counter()
-
+    def repack(self, booktype=None) -> str:
+        # TODO fetch converted, fetch extracted otherwise
         # extract all and process images in place
-        source_imgs = self.fetch_unpacked()
+        source_imgs = self.fetch_extracted()
         if self.conf.parallel:
             pcount = min(len(source_imgs), self.conf._get_pcount)
             with Pool(processes=pcount) as MPpool:
@@ -176,12 +174,8 @@ class Archive():
         discarded = len(source_imgs) - len(imgs_abspath)
         if discarded > 0:
             self._log('', progress=True)
-            print(f"[!] {discarded} files had errors and will be discarded.")
             if not self.conf.force:
-                reply = input("■─■ Proceed with writing archive? [y/n]").lower()
-                if reply not in ('y', 'yes'):
-                    print('[!] Aborting')
-                    return ('ABORTED', )
+                return f'ABORTED: {discarded} files had errors'
         if self.conf.overwrite:
             new_path = self.source_path
         else:
@@ -189,9 +183,7 @@ class Archive():
 
         # write to new local archive
         if self.conf.nowrite:
-            end_t = time.perf_counter()
-            elapsed = f'{end_t - start_t:.2f}s'
-            return (self.source_path, elapsed, 'Dry run')
+            return 'DRY RUN'
         elif new_path.exists():
             self._log(f'{new_path} exists, removing...')
             new_path.unlink()
@@ -210,16 +202,11 @@ class Archive():
                 msg += '\nwe might not have joined paths correctly in trans img'
                 raise ValueError(msg)
         new_zip.close()
-        new_size = new_path.stat().st_size
-        end_t = time.perf_counter()
-        elapsed = f'{end_t - start_t:.2f}s'
-        diff = self._summary_diff_archive(self.source_size, new_size)
         self._log('', progress=True)
-        print(new_path)
-        return new_path, elapsed, diff
+        return str(new_path)
 
-    def analyze(self) -> tuple:
-        def compute_fmt_size(sample_imgs, tempdir, fmt) -> tuple:
+    def compute_fmt_sizes(self) -> tuple:
+        def compute_fmt(sample_imgs, tempdir, fmt) -> tuple:
             fmtdir = Path.joinpath(tempdir, fmt.name)
             Path.mkdir(fmtdir)
             pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
@@ -235,14 +222,14 @@ class Archive():
 
         # extract images and compute their original size
         # these aren't saved to cache
-        source_imgs = self.unpack(count=self.conf.comparesamples)
+        source_imgs = self.extract(count=self.conf.comparesamples)
         nbytes = sum(Path(f).stat().st_size for f in source_imgs)
         source_fmt = determine_format(Image.open(source_imgs[0]))
-        source_fsize = (nbytes, f'{Archive.source_id} ({source_fmt.desc})',
-                        source_fmt.name)
+        source_fsize = [nbytes, f'{Archive.source_id} ({source_fmt.desc})',
+                        source_fmt.name]
         # also compute the size of each valid format after converting
         fmt_fsizes = []
-        pfunc = partial(compute_fmt_size, source_imgs, self.tempdir)
+        pfunc = partial(compute_fmt, source_imgs, self.tempdir)
         if self.conf.parallel:
             with ThreadPool(processes=len(self.valid_formats)) as Tpool:
                 fmt_fsizes.extend(Tpool.map(pfunc, self.valid_formats))
@@ -251,13 +238,11 @@ class Archive():
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
-        sorted_fmts = tuple(sorted(fmt_fsizes))
-        summary = self._summary_diff_fmts(source_fsize, sorted_fmts)
-        choices_dic = {i : total[2] for i, total in enumerate(sorted_fmts)}
-        suggested_fmt = {"desc":sorted_fmts[0][1], "name":sorted_fmts[0][2]}
+        sorted_fmts = list(sorted(fmt_fsizes))
+        sorted_fmts.insert(0, source_fsize)
         self._log(str(sorted_fmts))
         self._log('', progress=True)
-        return summary, choices_dic, suggested_fmt, sorted_fmts
+        return tuple(sorted_fmts)
 
     def _transform_img(self, source:Path, dest=None, forceformat=None): #-> None | Str:
         # open
@@ -342,52 +327,3 @@ class Archive():
             msg = '[*] ' + msg
             msg = msg[:max_width]
             print(f'{msg: <{max_width}}', end='\r', flush=True)
-
-    def _summary_diff_fmts(self, base:tuple, totals:tuple) -> str:
-        summary = f'┌─ Disk size ({self.conf.comparesamples}' + \
-                   ' pages) with present settings:\n'
-        # justify to the left and right respectively. effectively the same
-        # as using f'{part1: <25} | {part2: >8}\n'
-        part1 = f'│   {base[1]}'.ljust(37)
-        part2 = f'{Archive._get_human_size(base[0])}'.rjust(8)
-        summary += f'{part1} {part2} |  0.00%\n'
-        for i, total in enumerate(totals):
-            if i == len(totals)-1:
-                prefix = '└─'
-            else:
-                prefix = '├─'
-            change = Archive._get_pct_change(base[0], total[0])
-            part1 = f'{prefix}{i+1} {total[1]}'.ljust(37)
-            part2 = f'{Archive._get_human_size(total[0])}'.rjust(8)
-            summary += f'{part1} {part2} | {change}\n'
-        return summary[0:-1] # strip last newline
-
-    def _summary_diff_archive(self, base:int, new:int) -> str:
-        verb = 'decrease'
-        if new > base:
-            verb = 'INCREASE!'
-        change = Archive._get_pct_change(base, new)
-        basepretty = Archive._get_human_size(base)
-        newpretty = Archive._get_human_size(new)
-        return f'{Archive.source_id}: {basepretty} ■ New:' + \
-               f'{newpretty} ■ {change} {verb}'
-
-    @classmethod
-    def _get_human_size(cls, b:float) -> str:
-        # derived from https://github.com/x4nth055 (MIT)
-        suffix = "B"
-        FACTOR = 1024
-        for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
-            if b < FACTOR:
-                return f"{b:.2f}{unit}{suffix}"
-            b /= FACTOR
-        return f"{b:.2f}Y{suffix}"
-
-    @classmethod
-    def _get_pct_change(cls, base:float, new:float) -> str:
-        diff = new - base
-        pct_change = diff / base * 100
-        if pct_change >= 0:
-            return f"+{pct_change:.2f}%"
-        else:
-            return f"{pct_change:.2f}%"
