@@ -63,8 +63,7 @@ class Archive():
         try:
             source_zip = ZipFile(self.source_path)
         except BadZipFile as err:
-            print(f"[Fatal] '{self.source_path}': not a zip file")
-            raise ValueError
+            raise ValueError(f"Fatal: '{self.source_path}': not a zip file")
 
         compressed_files = source_zip.namelist()
         assert len(compressed_files) >= 1, 'no files in archive'
@@ -80,6 +79,7 @@ class Archive():
             source_zip.extract(file, self.tempdir)
         # god bless you Georgy https://stackoverflow.com/a/50927977/
         extracted = list(filter(Path.is_file, Path(self.tempdir).rglob('*')))
+        mylog('', progress=True)
         return extracted
 
     def repack(self, booktype=None) -> str:

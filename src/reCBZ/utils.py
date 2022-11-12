@@ -1,11 +1,16 @@
+import textwrap
 from shutil import get_terminal_size
 
 import reCBZ
 from .config import Config
 
 
+def shorten(*args, width=Config().term_width) -> str:
+    text = ' '.join(args)
+    return textwrap.shorten(text, width=width, placeholder='...')
+
+
 def mylog(msg:str, progress=False) -> None:
-    max_width = Config().term_width
     if Config.loglevel == -1:
         return
     elif Config.loglevel > 2:
@@ -14,13 +19,15 @@ def mylog(msg:str, progress=False) -> None:
         print(msg, flush=True)
     elif Config.loglevel == 1 and progress:
         msg = '[*] ' + msg
-        msg = msg[:max_width]
-        print(f'{msg: <{max_width}}', end='\n', flush=True)
+        msg = shorten(msg)
+        print(msg, end='\n', flush=True)
     elif Config.loglevel == 0 and progress:
-        # # no newline (i.e. overwrite line)
+        # no newline (i.e. overwrite line)
+        # flush last first
+        print('[*]'.ljust(Config().term_width), end='\r')
         msg = '[*] ' + msg
-        msg = msg[:max_width]
-        print(f'{msg: <{max_width}}', end='\r', flush=True)
+        msg = shorten(msg)
+        print(msg, end='\r', flush=True)
 
 
 def human_bytes(b:float) -> str:

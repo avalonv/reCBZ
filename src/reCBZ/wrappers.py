@@ -4,7 +4,7 @@ from pathlib import Path
 import reCBZ
 from .config import Config
 from .archive import Archive
-from .utils import human_bytes, pct_change
+from .utils import human_bytes, pct_change, shorten
 
 
 def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
@@ -31,26 +31,30 @@ def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
 
 def pprint_repack_stats(name:str, sizes:tuple, start_t:float) -> None:
     end_t = time.perf_counter()
+    width = Config().term_width
     elapsed = f'{end_t - start_t:.2f}s'
     base = sizes[0]
     new = sizes[1]
+    if len(name) > width - 33:
+        name = shorten(name, width=width - 33)
+    line1 = f"┌─ Source: '{name}' completed in {elapsed}"
     if type(new) is str:
-        print(f"┌─ Source: '{name}' completed in {elapsed}")
-        print(f"└───■■ {new} ") # bad
-        return
-    if new > base:
-        verb = 'INCREASE!'
+        line2 = f"└───■■ {new} " # bad
     else:
-        verb = 'decrease'
-    change = pct_change(base, new)
-    print(f"┌─ Source: '{name}' completed in {elapsed}")
-    print(f"└───■■ Source: {human_bytes(base)} ■ New: " +\
-          f"{human_bytes(new)} ■ {change} {verb} ■■")
+        if new > base:
+            verb = 'INCREASE!'
+        else:
+            verb = 'decrease'
+        change = pct_change(base, new)
+        line2 = f"└───■■ Source: {human_bytes(base)} ■ New: " +\
+                f"{human_bytes(new)} ■ {change} {verb} ■■"
+    print(line1)
+    print(line2)
 
 
 def compare_fmts_fp(filename:str) -> tuple:
     """Run a sample with each image format, return the results"""
-    if Config.loglevel >= 0: print('[i] Analyzing', filename)
+    if Config.loglevel >= 0: print(shorten('[i] Analyzing', filename))
     results = Archive(filename).compute_fmt_sizes()
     pprint_fmt_stats(results[0], results[1:])
     return results
@@ -60,7 +64,7 @@ def unpack_fp(filename:str) -> None:
     # not implemented yet
     """Unpack the archive, converting all images within
     Returns path to repacked archive"""
-    if Config.loglevel >= 0: print('[i] Unpacking', filename)
+    if Config.loglevel >= 0: print(shorten('[i] Unpacking', filename))
     unpacked = Archive(filename).repack()
     for file in unpacked:
         print(file)
@@ -70,7 +74,7 @@ def unpack_fp(filename:str) -> None:
 def repack_fp(filename:str) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""
-    if Config.loglevel >= 0: print('[i] Repacking', filename)
+    if Config.loglevel >= 0: print(shorten('[i] Repacking', filename))
     source_size = Path(filename).stat().st_size
 
     start_t = time.perf_counter()
@@ -113,6 +117,6 @@ def auto_repack_fp(filename:str) -> str:
     selection = {"desc":results[1][1], "name":results[1][2]}
     fmt_name = selection['name']
     fmt_desc = selection['desc']
-    if Config.loglevel >= 0: print('[i] Proceeding with', fmt_desc)
+    if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
     Config.formatname = fmt_name
     return repack_fp(filename)
