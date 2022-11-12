@@ -2,7 +2,8 @@ import time
 from pathlib import Path
 
 import reCBZ
-from .archive import Archive, Config
+from .config import Config
+from .archive import Archive
 from .utils import human_bytes, pct_change
 
 
@@ -47,33 +48,33 @@ def pprint_repack_stats(name:str, sizes:tuple, start_t:float) -> None:
           f"{human_bytes(new)} ■ {change} {verb} ■■")
 
 
-def compare_fmts_fp(filename:str, config=Config()) -> tuple:
+def compare_fmts_fp(filename:str) -> tuple:
     """Run a sample with each image format, return the results"""
-    if config.loglevel >= 0: print('[i] Analyzing', filename)
-    results = Archive(filename, config).compute_fmt_sizes()
+    if Config.loglevel >= 0: print('[i] Analyzing', filename)
+    results = Archive(filename).compute_fmt_sizes()
     pprint_fmt_stats(results[0], results[1:])
     return results
 
 
-def unpack_fp(filename:str, config=Config()) -> None:
+def unpack_fp(filename:str) -> None:
     # not implemented yet
     """Unpack the archive, converting all images within
     Returns path to repacked archive"""
-    if config.loglevel >= 0: print('[i] Unpacking', filename)
-    unpacked = Archive(filename, config).repack()
+    if Config.loglevel >= 0: print('[i] Unpacking', filename)
+    unpacked = Archive(filename).repack()
     for file in unpacked:
         print(file)
     exit(1)
 
 
-def repack_fp(filename:str, config=Config()) -> str:
+def repack_fp(filename:str) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""
-    if config.loglevel >= 0: print('[i] Repacking', filename)
+    if Config.loglevel >= 0: print('[i] Repacking', filename)
     source_size = Path(filename).stat().st_size
 
     start_t = time.perf_counter()
-    results = Archive(filename, config).repack()
+    results = Archive(filename).repack()
     if 'ABORTED:' in results:
         new_size = results
     else:
@@ -82,11 +83,11 @@ def repack_fp(filename:str, config=Config()) -> str:
     return results
 
 
-def assist_repack_fp(filename:str, config=Config()) -> str:
+def assist_repack_fp(filename:str) -> str:
     """Run a sample with each image format, then ask which to repack
     the rest of the archive with
     Returns path to repacked archive"""
-    results = compare_fmts_fp(filename, config)
+    results = compare_fmts_fp(filename)
     options_dic = {i : total[2] for i, total in enumerate(results[1:])}
     metavar = f'[1-{len(options_dic)}]'
     while True:
@@ -100,18 +101,18 @@ def assist_repack_fp(filename:str, config=Config()) -> str:
         except KeyboardInterrupt:
             print('[!] Aborting')
             exit(1)
-    config.formatname = selection
-    return repack_fp(filename, config)
+    Config.formatname = selection
+    return repack_fp(filename)
 
 
-def auto_repack_fp(filename:str, config=Config()) -> str:
+def auto_repack_fp(filename:str) -> str:
     """Run a sample with each image format, then automatically pick
     the smallest format to repack the rest of the archive with
     Returns path to repacked archive"""
-    results = Archive(filename, config).compute_fmt_sizes()
+    results = Archive(filename).compute_fmt_sizes()
     selection = {"desc":results[1][1], "name":results[1][2]}
     fmt_name = selection['name']
     fmt_desc = selection['desc']
-    if config.loglevel >= 0: print('[i] Proceeding with', fmt_desc)
-    config.formatname = fmt_name
-    return repack_fp(filename, config)
+    if Config.loglevel >= 0: print('[i] Proceeding with', fmt_desc)
+    Config.formatname = fmt_name
+    return repack_fp(filename)

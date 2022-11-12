@@ -1,4 +1,26 @@
+from shutil import get_terminal_size
+
 import reCBZ
+from .config import Config
+
+
+def mylog(msg:str, progress=False) -> None:
+    max_width = Config().term_width
+    if Config.loglevel == -1:
+        return
+    elif Config.loglevel > 2:
+        print(msg, flush=True)
+    elif Config.loglevel == 2 and not progress:
+        print(msg, flush=True)
+    elif Config.loglevel == 1 and progress:
+        msg = '[*] ' + msg
+        msg = msg[:max_width]
+        print(f'{msg: <{max_width}}', end='\n', flush=True)
+    elif Config.loglevel == 0 and progress:
+        # # no newline (i.e. overwrite line)
+        msg = '[*] ' + msg
+        msg = msg[:max_width]
+        print(f'{msg: <{max_width}}', end='\r', flush=True)
 
 
 def human_bytes(b:float) -> str:
