@@ -28,13 +28,15 @@ class Config():
 
     @property
     def _get_pcount(cls) -> int:
-        default_value = 8
+        default_value = 4
         if cls.processes > 0:
             return cls.processes
         else:
             logical_cores = os.cpu_count()
             try:
                 assert logical_cores is not None
+                if logical_cores > 1:
+                    logical_cores -= 1 # be kind
                 return logical_cores
             except AssertionError:
                 return default_value

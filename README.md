@@ -92,8 +92,8 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 <ul>No progress messages.</ul>
 
 **--processes** *1 - 32*  
-default: all available CPUs (100% utilization)  
-<ul>Max number of processes to spawn. This will only improve performance if your CPU has cores to spare (it's not magic!). Lower this to 2 or 4 if you're experiencing high memory usage.</ul>
+default: CPU count - 1 (close to 100% utilization)  
+<ul>Max number of processes to spawn. This will only improve performance if your CPU has cores to spare (it's not magic!). <b>Warning:</b> May choke lower end systems, set this to 2 or 4 if you're experiencing high memory usage.</ul>
 
 **--sequential**  
 <ul>Disable multiprocessing altogether. Use this only if you're still experiencing memory issues, or for debugging.</ul>
