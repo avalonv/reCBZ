@@ -1,6 +1,7 @@
 import os
 import argparse
 import platform
+import multiprocessing
 
 import reCBZ
 from reCBZ import utils, archive, wrappers
@@ -217,7 +218,11 @@ def main():
                 wrappers.auto_repack_fp(filename)
         except InterruptedError:
             continue
+        except (KeyboardInterrupt, utils.MPrunnerInterrupt):
+            print('\nGoooooooooodbye')
+            exit(1)
 
 
 if __name__ == '__main__':
+    # catching errors here won't work, presumably because of namespace mangling
     main()

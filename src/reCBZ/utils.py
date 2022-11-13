@@ -1,8 +1,15 @@
 import textwrap
-from shutil import get_terminal_size
+import signal
+import platform
+from multiprocessing import Pool
+from functools import wraps
 
 import reCBZ
 from .config import Config
+
+
+class MPrunnerInterrupt(KeyboardInterrupt):
+    """KeyboardInterrupt gracefully caught in MP_runner, please catch me"""
 
 
 def shorten(*args, width=Config().term_width) -> str:
@@ -48,3 +55,54 @@ def pct_change(base:float, new:float) -> str:
         return f"+{pct_change:.2f}%"
     else:
         return f"{pct_change:.2f}%"
+
+
+
+def pool_ctrl_c_handler(*args, **kwargs):
+    global ctrl_c_entered
+    ctrl_c_entered = True
+
+
+def init_pool():
+    # set global variable for each process in the pool:
+    global ctrl_c_entered
+    global default_sigint_handler
+    ctrl_c_entered = False
+    default_sigint_handler = signal.signal(signal.SIGINT, pool_ctrl_c_handler)
+
+
+def SIGNINT_ctrl_c(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not 'ctrl_c_entered' in globals():
+            # init_pool hasn't been called because we're not from MP_runner
+            # (i.e. single threaded)
+            return func(*args, **kwargs)
+        global ctrl_c_entered
+        if not ctrl_c_entered: # the default
+            signal.signal(signal.SIGINT, default_sigint_handler)
+            try:
+                return func(*args, **kwargs)
+            except KeyboardInterrupt:
+                ctrl_c_entered = True
+                return KeyboardInterrupt()
+            finally:
+                signal.signal(signal.SIGINT, pool_ctrl_c_handler)
+        else:
+            return KeyboardInterrupt()
+    return wrapper
+
+
+def MP_runner(count, func, args):
+    # GOD BLESS https://stackoverflow.com/a/68695455/
+    if platform.system == 'windows':
+        # this hangs on Unix, but prevents hanging Windows (insanity)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+    with Pool(processes=count, initializer=init_pool) as MPpool:
+        try:
+            return MPpool.map(func, args)
+        except KeyboardInterrupt:
+            mylog("MAY YOUR WOES BE MANY")
+            MPpool.terminate()
+            mylog("AND YOUR DAYS FEW")
+            raise MPrunnerInterrupt()

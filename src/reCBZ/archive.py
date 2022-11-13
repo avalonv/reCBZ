@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import time
-import os
 import tempfile
 import shutil
 import copy
-from sys import exit
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
@@ -17,10 +15,11 @@ from PIL import Image
 import reCBZ
 from .formats import *
 from .config import Config
-from .utils import mylog
+from .utils import mylog, MP_runner, SIGNINT_ctrl_c
 
 # TODO:
 # include docstrings
+
 
 class Archive():
     source_id:str = 'Source'
@@ -88,8 +87,7 @@ class Archive():
         source_imgs = self.fetch_extracted()
         if self.opt.parallel:
             pcount = min(len(source_imgs), self.opt._get_pcount)
-            with Pool(processes=pcount) as MPpool:
-                results = MPpool.map(self._transform_img, source_imgs)
+            results = MP_runner(pcount, self._transform_img, source_imgs)
         else:
             results = map(self._transform_img, source_imgs)
         imgs_abspath = [path for path in results if path]
@@ -140,8 +138,7 @@ class Archive():
             pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
             if self.opt.parallel:
                 pcount = min(len(sample_imgs), self.opt._get_pcount)
-                with Pool(processes=pcount) as MPpool:
-                    results = MPpool.map(pfunc, sample_imgs)
+                results = MP_runner(pcount, pfunc, sample_imgs)
             else:
                 results = map(pfunc, sample_imgs)
             converted_imgs = [path for path in results if path]
@@ -172,6 +169,7 @@ class Archive():
         mylog('', progress=True)
         return tuple(sorted_fmts)
 
+    @SIGNINT_ctrl_c
     def _transform_img(self, source:Path, dest=None, forceformat=None): #-> None | Str:
         # open
         start_t = time.perf_counter()
