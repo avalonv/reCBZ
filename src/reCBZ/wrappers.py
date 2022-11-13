@@ -65,7 +65,7 @@ def unpack_fp(filename:str) -> None:
     """Unpack the archive, converting all images within
     Returns path to repacked archive"""
     if Config.loglevel >= 0: print(shorten('[i] Unpacking', filename))
-    unpacked = Archive(filename).repack()
+    unpacked = Archive(filename).extract()
     for file in unpacked:
         print(file)
     exit(1)
@@ -78,9 +78,14 @@ def repack_fp(filename:str) -> str:
     source_size = Path(filename).stat().st_size
 
     start_t = time.perf_counter()
-    results = Archive(filename).repack()
-    if 'ABORTED:' in results:
-        new_size = results
+    start_size = Path(filename).stat().st_size
+    book = Archive(filename)
+    start_pages = len(book.fetch_pages())
+    end_pages = len(book.convert_pages())
+    discarded = start_pages - end_pages
+    results = book.pack_as_cbz()
+    if discarded > 0:
+        new_size = f'ABORTED: {discarded} pages had errors'
     else:
         new_size = Path(results).stat().st_size
     pprint_repack_stats(Path(filename).name, (source_size, new_size), start_t)
@@ -120,3 +125,23 @@ def auto_repack_fp(filename:str) -> str:
     if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
     Config.formatname = fmt_name
     return repack_fp(filename)
+
+
+    # discarded = len(source_imgs) - len(imgs_abspath)
+    # if discarded > 0:
+    #     mylog('', progress=True)
+    #     if not self.opt.force:
+    #         # TODO raise an error here, which we will except in wrappers.
+    #         # check self.discarded for the total
+    #         return f'ABORTED: {discarded} files had errors'
+    # if self.opt.overwrite:
+    #     new_path = self.source_path
+    # else:
+    #     new_path = Path(f'{self.source_stem}{Archive.new_id}{self.opt.zipext}')
+
+    # # write to new local archive
+    # if self.opt.nowrite:
+    #     return 'DRY RUN'
+    # elif new_path.exists():
+    #     mylog(f'{new_path} exists, removing...')
+    #     new_path.unlink()

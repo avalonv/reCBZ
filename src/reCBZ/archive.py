@@ -40,15 +40,14 @@ class Archive():
         self.opt:Config = copy.deepcopy(Config())
         self.valid_formats:tuple = self.opt._get_validformats
         self.tempdir:Path = Path('.')
-        self._extracted:list = []
-        self._converted:list = []
+        self._pages:list = []
 
-    def fetch_extracted(self):
+    def fetch_pages(self):
         """Fetches extracted files from cache if it exists, otherwise extracts
         them first."""
-        if len(self._extracted) == 0:
-            self._extracted = self.extract()
-        return self._extracted
+        if len(self._pages) == 0:
+            self._pages = self.extract()
+        return self._pages
 
     def extract(self, count:int=0) -> list:
         # check and clean previous tempdirs
@@ -81,39 +80,14 @@ class Archive():
         mylog('', progress=True)
         return extracted
 
-    def repack(self, booktype=None) -> str:
-        # TODO fetch converted, fetch extracted otherwise
-        # extract all and process images in place
-        source_imgs = self.fetch_extracted()
-        if self.opt.parallel:
-            pcount = min(len(source_imgs), self.opt._get_pcount)
-            results = MP_runner(pcount, self._transform_img, source_imgs)
+    def pack_as_zip(self, dest='', extension='zip'):
+        if dest != '':
+            new_path = Path(f'{self.source_path}.{extension}')
         else:
-            results = map(self._transform_img, source_imgs)
-        imgs_abspath = [path for path in results if path]
-
-        # sanity check
-        discarded = len(source_imgs) - len(imgs_abspath)
-        if discarded > 0:
-            mylog('', progress=True)
-            if not self.opt.force:
-                # TODO raise an error here, which we will except in wrappers.
-                # check self.discarded for the total
-                return f'ABORTED: {discarded} files had errors'
-        if self.opt.overwrite:
-            new_path = self.source_path
-        else:
-            new_path = Path(f'{self.source_stem}{Archive.new_id}{self.opt.zipext}')
-
-        # write to new local archive
-        if self.opt.nowrite:
-            return 'DRY RUN'
-        elif new_path.exists():
-            mylog(f'{new_path} exists, removing...')
-            new_path.unlink()
+            new_path = Path(f'{self.source_stem}{Archive.new_id}.{extension}')
         new_zip = ZipFile(new_path,'w')
         mylog(f'Write {self.opt.zipext}: {new_path}', progress=True)
-        for source in imgs_abspath:
+        for source in self.fetch_pages():
             try:
                 dest = Path(source).relative_to(self.tempdir)
                 # minimal effect on filesize. TODO further testing on how it
@@ -128,6 +102,25 @@ class Archive():
         new_zip.close()
         mylog('', progress=True)
         return str(new_path)
+
+    def pack_as_cbz(self, dest=''):
+        return self.pack_as_zip(dest=dest, extension='cbz')
+
+    def pack_as_epub(self, dest=''):
+        pass
+
+    def pack_as_mobi(self, dest=''):
+        pass
+
+    def convert_pages(self, format='', quality='', grayscale='',  size=''):
+        source_imgs = self.fetch_pages()
+        if self.opt.parallel:
+            pcount = min(len(source_imgs), self.opt._get_pcount)
+            results = MP_runner(pcount, self._transform_img, source_imgs)
+        else:
+            results = map(self._transform_img, source_imgs)
+        self._pages = [path for path in results if path]
+        return self._pages
 
     def compute_fmt_sizes(self) -> tuple:
         # TODO add convert_images method which will supplant most of this.

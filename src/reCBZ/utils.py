@@ -57,7 +57,6 @@ def pct_change(base:float, new:float) -> str:
         return f"{pct_change:.2f}%"
 
 
-
 def pool_ctrl_c_handler(*args, **kwargs):
     global ctrl_c_entered
     ctrl_c_entered = True
