@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reCBZ"
-version = "0.3.0"
+version = "0.4.0"
 description = "Utility for repacking and optmizing manga & comic archives"
 readme = "README.md"
 license = { text = "GPLv3" }
@@ -34,7 +34,7 @@ Homepage = "https://github.com/avalonv/reCBZ"
 recbz = "reCBZ.__main__:main"
 
 [tool.bumpver]
-current_version = "0.3.0"
+current_version = "0.4.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
