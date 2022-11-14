@@ -3,21 +3,20 @@ import os
 from PIL import Image
 
 import reCBZ
-from . import formats as fmt
 
 
 class Config():
     overwrite:bool = reCBZ.OVERWRITE
-    force:bool = reCBZ.FORCE
+    ignore:bool = reCBZ.IGNORE
+    nowrite:bool = reCBZ.NOWRITE
     loglevel:int = reCBZ.LOGLEVEL
     parallel:bool = reCBZ.PARALLEL
     processes:int = reCBZ.PROCESSES
-    zipext:str = reCBZ.ZIPEXT
-    compresslevel:int = reCBZ.COMPRESSLEVEL
-    comparesamples:int = reCBZ.COMPARESAMPLES
-    nowrite:bool = reCBZ.NOWRITE
+    outformat:str = reCBZ.OUTFORMAT
+    compresszip:int = reCBZ.COMPRESSZIP
+    samplescount:int = reCBZ.SAMPLECOUNT
     blacklistedfmts:str = reCBZ.BLACKLISTEDFMTS
-    formatname:str = reCBZ.FORMATNAME
+    imageformat:str = reCBZ.IMAGEFORMAT
     quality:int = reCBZ.QUALITY
     resolution:str = reCBZ.RESOLUTION
     noupscale:bool = reCBZ.NOUPSCALE
@@ -26,8 +25,8 @@ class Config():
     # LANCZOS sacrifices performance for optimal upscale quality
     resamplemethod = Image.Resampling.LANCZOS
 
-    @property
-    def _get_pcount(cls) -> int:
+    @classmethod
+    def pcount(cls) -> int:
         default_value = 4
         if cls.processes > 0:
             return cls.processes
@@ -41,46 +40,8 @@ class Config():
             except AssertionError:
                 return default_value
 
-    @property
-    def _get_targetformat(cls):
-        if cls.formatname in (None, ''): return None
-        elif cls.formatname == 'jpeg': return fmt.Jpeg
-        elif cls.formatname == 'png': return fmt.Png
-        elif cls.formatname == 'webp': return fmt.WebpLossy
-        elif cls.formatname == 'webpll': return fmt.WebpLossless
-        else: return None
 
-    @property # TODO finish this
-    def _get_validformats(cls) -> tuple:
-        fmt.LossyFmt.quality = cls.quality
-        all_fmts = (fmt.Png, fmt.Jpeg, fmt.WebpLossy, fmt.WebpLossless)
-        try:
-            blacklist = cls.blacklistedfmts.lower().split(' ')
-        except AttributeError: # blacklist is None
-            return all_fmts
-        valid_fmts = tuple(fmt for fmt in all_fmts if fmt.name not in blacklist)
-        assert len(valid_fmts) >= 1, "valid_formats is 0"
-        return valid_fmts
-
-    @property
-    def _get_newsize(cls) -> tuple:
-        default_value = (0,0)
-        newsize = cls.resolution.lower().strip()
-        try:
-            newsize = tuple(map(int,newsize.split('x')))
-            assert len(newsize) == 2
-            return newsize
-        except (ValueError, AssertionError):
-            return default_value
-
-    @property
-    def _rescale(cls) -> bool:
-        if all(cls._get_newsize):
-            return True
-        else:
-            return False
-
-    @property
+    @classmethod
     def term_width(cls) -> int:
         # limit output message width. ignored if verbose
         TERM_COLUMNS, TERM_LINES = os.get_terminal_size()

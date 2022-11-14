@@ -153,9 +153,14 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 *.jpg
+*.jpeg
+*.webp
+*.png
+*.gif
+*.epub
+*.mobi
 *.cbz
 *.zip
 *.cbr
 reCBZold.py
 reCBZ2.py
-*.webp
