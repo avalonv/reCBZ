@@ -92,7 +92,7 @@ def repack_fp(filename:str) -> str:
     if Config.nowrite:
         results = filename
     else:
-        results = book.pack_archive('epub')
+        results = book.pack_archive(Config.outformat)
     new_stats = {'name':Path(results).stem,
                  'size':Path(results).stat().st_size,
                  'type':Path(results).suffix[1:]}

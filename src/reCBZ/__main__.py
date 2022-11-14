@@ -48,16 +48,17 @@ def main():
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
+    # TODO clean leftover options
     parser.add_argument( "-nw", "--nowrite",
         default=Config.nowrite,
         dest="nowrite",
         action="store_true",
-        help="dry run, no changes are saved at the end of repacking (safe)")
-    mode_group.add_argument( "-u", "--unpack",
-        const=0,
-        dest="mode",
-        action="store_const",
-        help="unpack the archive to the currect directory (safe)")
+        help="dry run, no changes are saved at the end (safe)")
+    # mode_group.add_argument( "-u", "--unpack",
+    #     const=0,
+    #     dest="mode",
+    #     action="store_const",
+    #     help="unpack the archive to the currect directory (safe)")
     mode_group.add_argument( "-c", "--compare",
         const=1,
         dest="mode",
@@ -73,22 +74,16 @@ def main():
         dest="mode",
         action="store_const",
         help="compare, then automatically picks the best format for a real run")
-    fmt_group.add_argument( "--nowebp",
-        default=Config.blacklistedfmts,
-        const=f'{Config.blacklistedfmts} webp webpll',
-        dest="blacklistedfmts",
-        action="store_const",
-        help="exclude webp from --auto")
-    ext_group.add_argument( "-O", "--overwrite",
-        default=Config.overwrite,
-        dest="overwrite",
-        action="store_true",
-        help="overwrite the original archive")
+    # ext_group.add_argument( "-O", "--overwrite",
+    #     default=Config.overwrite,
+    #     dest="overwrite",
+    #     action="store_true",
+    #     help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
         default=Config.ignore,
-        dest="force",
+        dest="ignore",
         action="store_true",
-        help="ignore file errors when using overwrite (dangerous)")
+        help="ignore file errors when writing pages (dangerous)")
     log_group.add_argument( "-v", "--verbose",
         default=Config.loglevel,
         dest="loglevel",
@@ -99,25 +94,29 @@ def main():
         dest="loglevel",
         action="store_const",
         help="disable all progress messages")
+    ext_group.add_argument( "--epub",
+        const='epub',
+        dest="outformat",
+        action="store_const",
+        help="save archive as epub")
+    fmt_group.add_argument( "--nowebp",
+        default=Config.blacklistedfmts,
+        const=f'{Config.blacklistedfmts} webp webpll',
+        dest="blacklistedfmts",
+        action="store_const",
+        help="exclude webp from --auto and --assist")
     process_group.add_argument("--processes",
         default=Config.processes,
         choices=(range(1,33)),
         metavar="[1-32]",
         dest="processes",
         type=int,
-        help="number of processes to spawn")
+        help="maximum number of processes to spawn")
     process_group.add_argument( "--sequential",
         default=Config.parallel,
         dest="parallel",
         action="store_false",
         help="disable multiprocessing")
-    ext_group.add_argument( "--saveas",
-        default=Config.outformat,
-        choices=('.cbz', '.zip', '.epub'),
-        metavar=".cbz/.zip/.epub",
-        dest="outformat",
-        type=str,
-        help="extension to save the new archive with")
     # parser.add_argument( "--zipcompress",
     #     default=Config.compresslevel,
     #     choices=(range(10)),

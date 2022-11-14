@@ -77,7 +77,7 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 
 <ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. If you wish to exclude this format, you can add <b>--nowebp</b>.</ul>
 
-**--overwrite**  **-O**  
+**--overwrite**  **-O**  (TODO)
 <ul>Overwrite the original archive. Specifically, it will be converted to a valid .cbz structure, meaning that non-image files will be discarded, and the folder structure will be flattened, any images sharing a name will be lost. Make sure you understand what this means before using this.</ul>
 
 ~~**--recursive**  **-R**~~  (TODO/Unimplemented)  see [#examples](#examples) 
@@ -90,6 +90,9 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 
 **--silent**  **-s**  
 <ul>No progress messages.</ul>
+
+--epub  
+<ul><b>WORK IN PROGRESS</b> Save archive as epub</ul>
 
 **--processes** *1 - 32*  
 default: CPU count - 1 (close to 100% utilization)  
