@@ -2,15 +2,13 @@ import time
 from pathlib import Path
 
 import reCBZ
-from .config import Config
-from .archive import Archive
-from .utils import human_bytes, pct_change, shorten
+from reCBZ.config import Config
+from reCBZ.archive import Archive
+from reCBZ.util import human_bytes, pct_change, shorten, mylog
 
 
 def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
-    print('base', base)
-    print('totals', totals)
-    lines = f'┌─ Disk size ({reCBZ.COMPARESAMPLES}' + \
+    lines = f'┌─ Disk size ({reCBZ.SAMPLECOUNT}' + \
              ' pages) with present settings:\n'
     # justify to the left and right respectively. effectively the same
     # as using f'{part1: <25} | {part2: >8}\n'
@@ -26,28 +24,29 @@ def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
         part1 = f'{prefix}{i+1} {total[1]}'.ljust(37)
         part2 = f'{human_bytes(total[0])}'.rjust(8)
         lines += f'{part1} {part2} | {change}\n'
+    mylog('', progress=True)
     print(lines[0:-1]) # strip last newline
 
 
-def pprint_repack_stats(name:str, sizes:tuple, start_t:float) -> None:
+def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     end_t = time.perf_counter()
-    width = Config().term_width
     elapsed = f'{end_t - start_t:.2f}s'
-    base = sizes[0]
-    new = sizes[1]
-    if len(name) > width - 33:
-        name = shorten(name, width=width - 33)
-    line1 = f"┌─ Source: '{name}' completed in {elapsed}"
-    if type(new) is str:
-        line2 = f"└───■■ {new} " # bad
+    max_width = Config.term_width()
+    new_size = new['size']
+    source_size = source['size']
+    name = new['name']
+    op = f"{source['type'].upper()} -> {new['type'].upper()}"
+    if len(name) > max_width - 36:
+        name = shorten(name, width=max_width - 36)
+    if new_size > source_size:
+        verb = 'INCREASE!'
     else:
-        if new > base:
-            verb = 'INCREASE!'
-        else:
-            verb = 'decrease'
-        change = pct_change(base, new)
-        line2 = f"└───■■ Source: {human_bytes(base)} ■ New: " +\
-                f"{human_bytes(new)} ■ {change} {verb} ■■"
+        verb = 'decrease'
+    change = pct_change(source_size, new_size)
+    line1 = f"┌─ {op}: '{name}' completed in {elapsed}"
+    line2 = f"└───■■ Source: {human_bytes(source_size)} ■ New: " +\
+            f"{human_bytes(new_size)} ■ {change} {verb} ■■"
+    mylog('', progress=True)
     print(line1)
     print(line2)
 
@@ -75,20 +74,29 @@ def repack_fp(filename:str) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""
     if Config.loglevel >= 0: print(shorten('[i] Repacking', filename))
-    source_size = Path(filename).stat().st_size
-
     start_t = time.perf_counter()
-    start_size = Path(filename).stat().st_size
     book = Archive(filename)
-    start_pages = len(book.fetch_pages())
-    end_pages = len(book.convert_pages())
-    discarded = start_pages - end_pages
-    results = book.pack_as_cbz()
+    book.extract()
+    source_pages = len(book.fetch_pages())
+    source_stats = {'name':Path(filename).stem,
+                    'size':Path(filename).stat().st_size,
+                    'type':Path(filename).suffix[1:]}
+    book.convert_pages(Config.quality)
+    new_pages = len(book.fetch_pages())
+    discarded = source_pages - new_pages
     if discarded > 0:
-        new_size = f'ABORTED: {discarded} pages had errors'
+        print(f"[!] {discarded} pages couldn't be written")
+        if not Config.ignore:
+            print('[!] Aborting')
+            raise InterruptedError
+    if Config.nowrite:
+        results = filename
     else:
-        new_size = Path(results).stat().st_size
-    pprint_repack_stats(Path(filename).name, (source_size, new_size), start_t)
+        results = book.pack_archive('epub')
+    new_stats = {'name':Path(results).stem,
+                 'size':Path(results).stat().st_size,
+                 'type':Path(results).suffix[1:]}
+    pprint_repack_stats(source_stats, new_stats, start_t)
     return results
 
 
@@ -110,7 +118,7 @@ def assist_repack_fp(filename:str) -> str:
         except KeyboardInterrupt:
             print('[!] Aborting')
             exit(1)
-    Config.formatname = selection
+    Config.imageformat = selection
     return repack_fp(filename)
 
 
@@ -123,25 +131,5 @@ def auto_repack_fp(filename:str) -> str:
     fmt_name = selection['name']
     fmt_desc = selection['desc']
     if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
-    Config.formatname = fmt_name
+    Config.imageformat = fmt_name
     return repack_fp(filename)
-
-
-    # discarded = len(source_imgs) - len(imgs_abspath)
-    # if discarded > 0:
-    #     mylog('', progress=True)
-    #     if not self.opt.force:
-    #         # TODO raise an error here, which we will except in wrappers.
-    #         # check self.discarded for the total
-    #         return f'ABORTED: {discarded} files had errors'
-    # if self.opt.overwrite:
-    #     new_path = self.source_path
-    # else:
-    #     new_path = Path(f'{self.source_stem}{Archive.new_id}{self.opt.zipext}')
-
-    # # write to new local archive
-    # if self.opt.nowrite:
-    #     return 'DRY RUN'
-    # elif new_path.exists():
-    #     mylog(f'{new_path} exists, removing...')
-    #     new_path.unlink()

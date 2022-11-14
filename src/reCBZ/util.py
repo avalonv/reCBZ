@@ -1,18 +1,19 @@
 import textwrap
 import signal
 import platform
+from re import split
 from multiprocessing import Pool
 from functools import wraps
 
 import reCBZ
-from .config import Config
+from reCBZ.config import Config
 
 
 class MPrunnerInterrupt(KeyboardInterrupt):
     """KeyboardInterrupt gracefully caught in MP_runner, please catch me"""
 
 
-def shorten(*args, width=Config().term_width) -> str:
+def shorten(*args, width=Config.term_width()) -> str:
     text = ' '.join(args)
     return textwrap.shorten(text, width=width, placeholder='...')
 
@@ -31,10 +32,20 @@ def mylog(msg:str, progress=False) -> None:
     elif Config.loglevel == 0 and progress:
         # no newline (i.e. overwrite line)
         # flush last first
-        print('[*]'.ljust(Config().term_width), end='\r')
+        print('[*]'.ljust(Config.term_width()), end='\r')
         msg = '[*] ' + msg
         msg = shorten(msg)
         print(msg, end='\r', flush=True)
+
+
+def human_sort(lst) -> list:
+    """ Sort the given iterable in the way that humans expect."""
+    # https://stackoverflow.com/a/2669120/
+    if not type(lst[0]) is str:
+        lst = [str(i) for i in lst]
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [convert(c) for c in split('([0-9]+)', key)]
+    return sorted(lst, key = alphanum_key)
 
 
 def human_bytes(b:float) -> str:
@@ -92,14 +103,15 @@ def SIGNINT_ctrl_c(func):
     return wrapper
 
 
-def MP_runner(count, func, args):
+def MP_run_tasks(func, tasks):
     # GOD BLESS https://stackoverflow.com/a/68695455/
     if platform.system == 'windows':
         # this hangs on Unix, but prevents hanging Windows (insanity)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-    with Pool(processes=count, initializer=init_pool) as MPpool:
+    pcount = min(len(tasks), Config.pcount())
+    with Pool(processes=pcount, initializer=init_pool) as MPpool:
         try:
-            return MPpool.map(func, args)
+            return MPpool.map(func, tasks)
         except KeyboardInterrupt:
             mylog("MAY YOUR WOES BE MANY")
             MPpool.terminate()

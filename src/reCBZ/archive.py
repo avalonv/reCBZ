@@ -3,7 +3,6 @@
 import time
 import tempfile
 import shutil
-import copy
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
@@ -13,9 +12,9 @@ from pathlib import Path
 from PIL import Image
 
 import reCBZ
-from .formats import *
-from .config import Config
-from .utils import mylog, MP_runner, SIGNINT_ctrl_c
+from reCBZ.formats import *
+from reCBZ.config import Config
+from reCBZ.util import mylog, MP_run_tasks, SIGNINT_ctrl_c
 
 # TODO:
 # include docstrings
@@ -24,7 +23,7 @@ from .utils import mylog, MP_runner, SIGNINT_ctrl_c
 class Archive():
     source_id:str = 'Source'
     new_id:str = ' [reCBZ]'
-    temp_prefix:str = f'{reCBZ.CMDNAME}CACHE_'
+    temp_prefix:str = f'reCBZCACHE_'
 
     def __init__(self, filename:str):
         mylog('Archive: __init__')
@@ -33,23 +32,29 @@ class Archive():
         else:
             raise ValueError(f"{filename}: invalid path")
         self.source_stem = self.source_path.stem
-        # ideally, changing one shouldn't affect the other. changing one
-        # instance's targetformat shouldn't apply to future instances. might not
-        # actually need deepcopy(), haven't fully wrapped my head around it yet
-        # self.opt:Config = Config()
-        self.opt:Config = copy.deepcopy(Config())
-        self.valid_formats:tuple = self.opt._get_validformats
-        self.tempdir:Path = Path('.')
+        self.opt_parallel = Config.parallel
+        self.opt_ignore = Config.ignore
+        self._zip_compress = Config.compresszip
+        self._fmt_blacklist = Config.blacklistedfmts
+        self._convert_samples = Config.samplescount
+        self._convert_format = Config.imageformat
+        self._convert_quality = Config.quality
+        self._convert_size = Config.resolution
+        self._convert_bw = Config.grayscale
+        self._convert_noup = Config.noupscale
+        self._convert_nodown = Config.nodownscale
+        self._convert_filter = Config.resamplemethod
         self._pages:list = []
+        self.tempdir:Path = Path('.')
 
     def fetch_pages(self):
         """Fetches extracted files from cache if it exists, otherwise extracts
         them first."""
         if len(self._pages) == 0:
-            self._pages = self.extract()
+            self._pages = list(self.extract())
         return self._pages
 
-    def extract(self, count:int=0) -> list:
+    def extract(self, count:int=0) -> tuple:
         # check and clean previous tempdirs
         prev_dirs = Path(tempfile.gettempdir()).glob(f'{self.temp_prefix}*')
         for path in prev_dirs:
@@ -77,50 +82,63 @@ class Archive():
             source_zip.extract(file, self.tempdir)
         # god bless you Georgy https://stackoverflow.com/a/50927977/
         extracted = list(filter(Path.is_file, Path(self.tempdir).rglob('*')))
+        if count == 0: # we extracted the whole thing, update pages
+            self._pages = extracted
         mylog('', progress=True)
-        return extracted
+        return tuple(extracted)
 
-    def pack_as_zip(self, dest='', extension='zip'):
-        if dest != '':
-            new_path = Path(f'{self.source_path}.{extension}')
+    def pack_archive(self, bookformat='cbz', dest='') -> str:
+        if bookformat in ('cbz', 'zip'):
+            if dest != '':
+                new_path = Path.joinpath(Path(dest),
+                                         Path(f'{self.source_path}.{bookformat}'))
+            else:
+                new_path = Path(f'{self.source_stem}{Archive.new_id}.{bookformat}')
+            if new_path.exists():
+                mylog(f'Write .{bookformat}: {new_path}', progress=True)
+                mylog(f'{new_path} exists, removing...')
+                new_path.unlink()
+            new_zip = ZipFile(new_path,'w')
+            for source in self.fetch_pages():
+                try:
+                    dest = Path(source).relative_to(self.tempdir)
+                    # minimal effect on filesize. TODO further testing on how it
+                    # affects time to open in an ereader required
+                    new_zip.write(source, dest, ZIP_DEFLATED, 9)
+                    # new_zip.write(source, dest)
+                except ValueError:
+                    msg = 'Path is being screwy. Does tempdir exist? '
+                    msg += str(self.tempdir.exists())
+                    msg += '\nwe might not have joined paths correctly in trans img'
+                    raise ValueError(msg)
+            new_zip.close()
+            return str(new_path)
+
+        elif bookformat == 'epub':
+            from reCBZ.epub import single_volume_epub
+            title = self.source_stem
+            mylog(f'Write .epub: {title}.epub', progress=True)
+            new_path = single_volume_epub(title, self.fetch_pages())
+            return new_path
+
+        elif bookformat == 'mobi':
+            # unimplemented
+            return ''
+
         else:
-            new_path = Path(f'{self.source_stem}{Archive.new_id}.{extension}')
-        new_zip = ZipFile(new_path,'w')
-        mylog(f'Write {self.opt.zipext}: {new_path}', progress=True)
-        for source in self.fetch_pages():
-            try:
-                dest = Path(source).relative_to(self.tempdir)
-                # minimal effect on filesize. TODO further testing on how it
-                # affects time to open in an ereader required
-                new_zip.write(source, dest, ZIP_DEFLATED, 9)
-                # new_zip.write(source, dest)
-            except ValueError:
-                msg = 'Path is being screwy. Does tempdir exist? '
-                msg += str(self.tempdir.exists())
-                msg += '\nwe might not have joined paths correctly in trans img'
-                raise ValueError(msg)
-        new_zip.close()
-        mylog('', progress=True)
-        return str(new_path)
+            raise ValueError(f"Invalid format '{bookformat}'")
 
-    def pack_as_cbz(self, dest=''):
-        return self.pack_as_zip(dest=dest, extension='cbz')
-
-    def pack_as_epub(self, dest=''):
-        pass
-
-    def pack_as_mobi(self, dest=''):
-        pass
-
-    def convert_pages(self, format='', quality='', grayscale='',  size=''):
+    def convert_pages(self, format, quality=None, grayscale=None, size=None) -> tuple:
+        if quality is not None: self._convert_quality = int(quality)
+        if grayscale is not None: self._convert_bw = bool(grayscale)
+        if size is not None: self._convert_size = size
         source_imgs = self.fetch_pages()
-        if self.opt.parallel:
-            pcount = min(len(source_imgs), self.opt._get_pcount)
-            results = MP_runner(pcount, self._transform_img, source_imgs)
+        if self.opt_parallel:
+            results = MP_run_tasks(self._transform_img, source_imgs)
         else:
             results = map(self._transform_img, source_imgs)
         self._pages = [path for path in results if path]
-        return self._pages
+        return tuple(self._pages)
 
     def compute_fmt_sizes(self) -> tuple:
         # TODO add convert_images method which will supplant most of this.
@@ -129,9 +147,8 @@ class Archive():
             fmtdir = Path.joinpath(tempdir, fmt.name)
             Path.mkdir(fmtdir)
             pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
-            if self.opt.parallel:
-                pcount = min(len(sample_imgs), self.opt._get_pcount)
-                results = MP_runner(pcount, pfunc, sample_imgs)
+            if self.opt_parallel:
+                results = MP_run_tasks(pfunc, sample_imgs)
             else:
                 results = map(pfunc, sample_imgs)
             converted_imgs = [path for path in results if path]
@@ -140,7 +157,7 @@ class Archive():
 
         # extract images and compute their original size
         # these aren't saved to cache
-        source_imgs = self.extract(count=self.opt.comparesamples)
+        source_imgs = self.extract(count=self._convert_samples)
         nbytes = sum(Path(f).stat().st_size for f in source_imgs)
         source_fmt = determine_format(Image.open(source_imgs[0]))
         source_fsize = [nbytes, f'{Archive.source_id} ({source_fmt.desc})',
@@ -148,11 +165,11 @@ class Archive():
         # also compute the size of each valid format after converting
         fmt_fsizes = []
         pfunc = partial(compute_fmt, source_imgs, self.tempdir)
-        if self.opt.parallel:
-            with ThreadPool(processes=len(self.valid_formats)) as Tpool:
-                fmt_fsizes.extend(Tpool.map(pfunc, self.valid_formats))
+        if self.opt_parallel:
+            with ThreadPool(processes=len(self._img_validformats)) as Tpool:
+                fmt_fsizes.extend(Tpool.map(pfunc, self._img_validformats))
         else:
-            fmt_fsizes.extend(map(pfunc, self.valid_formats))
+            fmt_fsizes.extend(map(pfunc, self._img_validformats))
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
@@ -170,20 +187,26 @@ class Archive():
             mylog(f'Read img: {source.name}', progress=True)
             log_buff = f'/open:  {source}\n'
             img = Image.open(source)
-        except IOError:
-            mylog(f"{source}: can't open file as image, ignoring...'")
-            return None
+        except IOError as err:
+            if self.opt_ignore:
+                mylog(f"{source}: can't open file as image, ignoring...'")
+                return None
+            else:
+                raise err
 
         # determine target format
         try:
             source_fmt = determine_format(img)
-        except KeyError:
-            mylog(f"{source}: invalid image format, ignoring...'")
-            return None
+        except KeyError as err:
+            if self.opt_ignore:
+                mylog(f"{source}: invalid image format, ignoring...'")
+                return None
+            else:
+                raise err
         if forceformat:
             new_fmt = forceformat
-        elif self.opt._get_targetformat is not None:
-            new_fmt = self.opt._get_targetformat
+        elif self._img_formatclass is not None:
+            new_fmt = self._img_formatclass
         else:
             new_fmt = source_fmt
 
@@ -194,38 +217,67 @@ class Archive():
               img = img.convert('RGB')
 
         # transform
-        if self.opt.grayscale:
+        if self._convert_bw:
             log_buff += '|trans: mode L\n' # me lol
             img = img.convert('L')
-        if self.opt._rescale:
-            log_buff += f'|trans: resize to {self.opt._get_newsize}\n'
-            img = self._resize_img(img)
+        if all(self._img_newsize):
+            log_buff += f'|trans: resize to {self._img_newsize}\n'
+            width, height = img.size
+            newsize = self._img_newsize
+            # preserve aspect ratio for landscape images
+            if width > height:
+                newsize = newsize[::-1]
+            n_width, n_height = newsize
+            # downscaling
+            if (width > n_width and height > n_height
+                and not self._convert_nodown):
+                img = img.resize((newsize), self._convert_filter)
+            # upscaling
+            elif not self._convert_noup:
+                    img = img.resize((newsize), self._convert_filter)
 
         # save
         ext:str = new_fmt.ext[0]
         if dest:
-            p = Path.joinpath(dest, f'{source.stem}{ext}')
+            fp = Path.joinpath(dest, f'{source.stem}{ext}')
         else:
-            p = Path.joinpath(source.parents[0], f'{source.stem}{ext}')
+            fp = Path.joinpath(source.parents[0], f'{source.stem}{ext}')
         log_buff += f'|trans: {source_fmt.name} -> {new_fmt.name}\n'
-        new_fmt.save(img, p)
+        new_fmt.save(img, fp)
         end_t = time.perf_counter()
         elapsed = f'{end_t-start_t:.2f}s'
-        mylog(f'{log_buff}\\write: {p}: took {elapsed}')
-        mylog(f'Save img: {p.name}', progress=True)
-        return p
+        mylog(f'{log_buff}\\write: {fp}: took {elapsed}')
+        mylog(f'Save img: {fp.name}', progress=True)
+        return fp
 
-    def _resize_img(self, img:Image.Image) -> Image.Image:
-        width, height = img.size
-        newsize = self.opt._get_newsize
-        # preserve aspect ratio for landscape images
-        if width > height:
-            newsize = newsize[::-1]
-        n_width, n_height = newsize
-        # downscaling
-        if (width>n_width) and (height>n_height) and not self.opt.nodownscale:
-            img = img.resize((newsize), self.opt.resamplemethod)
-        # upscaling
-        elif not self.opt.noupscale:
-            img = img.resize((newsize), self.opt.resamplemethod)
-        return img
+    @property
+    def _img_formatclass(self):
+        if self._convert_format in (None, ''): return None
+        elif self._convert_format == 'jpeg': return Jpeg
+        elif self._convert_format == 'png': return Png
+        elif self._convert_format == 'webp': return WebpLossy
+        elif self._convert_format == 'webpll': return WebpLossless
+        else: return None
+
+    @property
+    def _img_validformats(self) -> tuple:
+        LossyFmt.quality = self._convert_quality
+        all_fmts = (Png, Jpeg, WebpLossy, WebpLossless)
+        try:
+            blacklist = self._fmt_blacklist.lower().split(' ')
+        except AttributeError: # blacklist is None
+            return all_fmts
+        valid_fmts = tuple(fmt for fmt in all_fmts if fmt.name not in blacklist)
+        assert len(valid_fmts) >= 1, "valid_formats is 0"
+        return valid_fmts
+
+    @property
+    def _img_newsize(self) -> tuple:
+        default_value = (0,0)
+        newsize = self._convert_size.lower().strip()
+        try:
+            newsize = tuple(map(int,newsize.split('x')))
+            assert len(newsize) == 2
+            return newsize
+        except (ValueError, AssertionError):
+            return default_value

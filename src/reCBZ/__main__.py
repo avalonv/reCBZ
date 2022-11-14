@@ -1,17 +1,16 @@
 import os
 import argparse
 import platform
-import multiprocessing
 
 import reCBZ
-from reCBZ import utils, archive, wrappers
-from .config import Config
+from reCBZ import wrappers, util
+from reCBZ.config import Config
 
 
 def print_title() -> None:
-    align = int(Config().term_width / 2) - 11
+    align = int(Config.term_width() / 2) - 11
     if align > 21: align = 21
-    if align + 22 > Config().term_width or align < 0:
+    if align + 22 > Config.term_width() or align < 0:
         align = 0
     align = align * ' '
     title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
@@ -86,7 +85,7 @@ def main():
         action="store_true",
         help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
-        default=Config.force,
+        default=Config.ignore,
         dest="force",
         action="store_true",
         help="ignore file errors when using overwrite (dangerous)")
@@ -96,7 +95,7 @@ def main():
         action="count",
         help="increase verbosity of progress messages, repeatable: -vvv")
     log_group.add_argument( "-s", "--silent",
-        const=0,
+        const=-1,
         dest="loglevel",
         action="store_const",
         help="disable all progress messages")
@@ -112,11 +111,11 @@ def main():
         dest="parallel",
         action="store_false",
         help="disable multiprocessing")
-    ext_group.add_argument( "--zipext",
-        default=Config.zipext,
-        choices=('.cbz', '.zip'),
-        metavar=".cbz/.zip",
-        dest="zipext",
+    ext_group.add_argument( "--saveas",
+        default=Config.outformat,
+        choices=('.cbz', '.zip', '.epub'),
+        metavar=".cbz/.zip/.epub",
+        dest="outformat",
         type=str,
         help="extension to save the new archive with")
     # parser.add_argument( "--zipcompress",
@@ -127,12 +126,12 @@ def main():
     #     type=int,
     #     help="compression level for the archive. 0 (default) recommended")
     fmt_group.add_argument( "--fmt",
-        default=Config.formatname,
+        default=Config.imageformat,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="fmt",
-        dest="formatname",
+        dest="imageformat",
         type=str,
-        help="format to convert images to: jpeg, webp, webpll, or png")
+        help="format to convert pages to: jpeg, webp, webpll, or png")
     parser.add_argument( "--quality",
         default=Config.quality,
         choices=(range(1,101)),
@@ -218,7 +217,7 @@ def main():
                 wrappers.auto_repack_fp(filename)
         except InterruptedError:
             continue
-        except (KeyboardInterrupt, utils.MPrunnerInterrupt):
+        except (KeyboardInterrupt, util.MPrunnerInterrupt):
             print('\nGoooooooooodbye')
             exit(1)
 
