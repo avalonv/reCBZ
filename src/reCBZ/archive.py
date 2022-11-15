@@ -49,8 +49,6 @@ class Archive():
         self.tempdir:Path = Path('.')
 
     def fetch_pages(self):
-        """Fetches extracted files from cache if it exists, otherwise extracts
-        them first."""
         if len(self._pages) == 0:
             self._pages = list(self.extract())
         return self._pages
@@ -116,25 +114,24 @@ class Archive():
         else:
             raise ValueError
 
-    def convert_pages(self, format, quality=None, grayscale=None, size=None) -> tuple:
+    def convert_pages(self, fmt=None, quality=None, grayscale=None, size=None) -> tuple:
+        if fmt is not None: self._convert_format = fmt
         if quality is not None: self._convert_quality = int(quality)
         if grayscale is not None: self._convert_bw = bool(grayscale)
         if size is not None: self._convert_size = size
         source_imgs = self.fetch_pages()
         if self.opt_parallel:
-            results = MP_run_tasks(self._transform_img, source_imgs)
+            results = MP_run_tasks(self._convert_img, source_imgs)
         else:
-            results = map(self._transform_img, source_imgs)
+            results = map(self._convert_img, source_imgs)
         self._pages = [path for path in results if path]
         return tuple(self._pages)
 
     def compute_fmt_sizes(self) -> tuple:
-        # TODO add convert_images method which will supplant most of this.
-        # then we can call convert_images with ThreadPool :)
-        def compute_fmt(sample_imgs, tempdir, fmt) -> tuple:
+        def compute_single_fmt(sample_imgs, tempdir, fmt) -> tuple:
             fmtdir = Path.joinpath(tempdir, fmt.name)
             Path.mkdir(fmtdir)
-            pfunc = partial(self._transform_img, dest=fmtdir, forceformat=fmt)
+            pfunc = partial(self._convert_img, dest=fmtdir, fmt=fmt)
             if self.opt_parallel:
                 results = MP_run_tasks(pfunc, sample_imgs)
             else:
@@ -152,7 +149,7 @@ class Archive():
                         source_fmt.name]
         # also compute the size of each valid format after converting
         fmt_fsizes = []
-        pfunc = partial(compute_fmt, source_imgs, self.tempdir)
+        pfunc = partial(compute_single_fmt, source_imgs, self.tempdir)
         if self.opt_parallel:
             with ThreadPool(processes=len(self._img_validformats)) as Tpool:
                 fmt_fsizes.extend(Tpool.map(pfunc, self._img_validformats))
@@ -194,8 +191,9 @@ class Archive():
     def _write_mobi(self, savepath):
         # not implemented
         pass
+
     @SIGNINT_ctrl_c
-    def _transform_img(self, source:Path, dest=None, forceformat=None): #-> None | Str:
+    def _convert_img(self, source:Path, dest=None, force_format=None): #-> None | Str:
         # open
         start_t = time.perf_counter()
         try:
@@ -218,8 +216,9 @@ class Archive():
                 return None
             else:
                 raise err
-        if forceformat:
-            new_fmt = forceformat
+
+        if force_format:
+            new_fmt = force_format
         elif self._img_formatclass is not None:
             new_fmt = self._img_formatclass
         else:
@@ -272,7 +271,7 @@ class Archive():
         elif self._convert_format == 'png': return Png
         elif self._convert_format == 'webp': return WebpLossy
         elif self._convert_format == 'webpll': return WebpLossless
-        else: return None
+        else: raise ValueError(f"Invalid format name '{self._convert_format}'")
 
     @property
     def _img_validformats(self) -> tuple:
