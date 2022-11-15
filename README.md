@@ -1,14 +1,14 @@
 # reCBZ - CBZ repacker
 
-CLI utility for repacking comic book archives (.cbz). Can be used to greatly reduce disk usage, upscale, and optimize comics & manga for reading on mobile devices and e-Readers. Can also be used to convert image formats in bulk (see [other uses](#other-uses)).
+CLI utility for working with comic book archives (.cbz). Can be used to save disk space, upscale, convert, and optimize comics & manga for reading on mobile devices and e-Readers. Also doubles as an extremely fast image converter.
 
 ### Purpose
 
-I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as a different format in black and white, which can cut the size of a high quality .cbz by half.
+I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as a different format in black and white, which can cut the size of a high quality .cbz by more than half.
 
-For example, by repacking with --auto/WebP, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is quite a lot when you consider most e-Readers still have only 4GB)! And that's just by changing the format, the size can be further reduced by another 50MB by downscaling to 120% display resolution, while still maintaining optimal visual clarity on a 6" 300PPI screen — effectively tripling the amount of manga that can be stored on your device.
+For example, by repacking with WebP, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is quite a lot when you consider most e-Readers still have only 4GB)! And that's while still retaining an extremely high resolution, the size can be further reduced by another 50MB by downscaling to the actual display resolution — easily tripling the amount of manga that can be stored on your device.
 
-Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression on black and white images.
+I highly recommend [Koreader](https://github.com/koreader/koreader/) if you have the time, but if you don't, this can also be used to convert CBZ files to EPUB on the fly so they can be read on Kindle devices, which now support EPUB.
 
 ## Install
 
@@ -26,20 +26,20 @@ or build from source:
 
 Accepts a valid .cbz or .zip file, or a collection of files. With no arguments passed, it will repack the file(s) with slightly higher compression while retaining the original format.
 
-The output file(s) will always be saved as `filename [reCBZ].extension`, unless **--overwrite** is specified.
+The output file(s) will always be saved to the current directory as `filename [reCBZ].extension`, unless **--overwrite** is specified.
 
 ### Examples:
 <details>
   <summary>Click to expand</summary>
 <br>
 
-Convert 'Blame! Master Edition v06.cbz' to various formats and ask which one to repack with:
+Convert pages in 'Blame! Master Edition v06.cbz' to various formats and ask which one to repack with:
 
     recbz --assist 'Blame! Master Edition v06.cbz'
 
-Convert two volumes to lossless WebP at twice the Kindle resolution:
+Rescale two volumes to the Kindle Paperwhite resolution, and save as EPUB:
 
-    recbz --fmt webpll --size 2250x3000 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
+    recbz --epub --size 1125x1500 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
 To repack all books in the current directory (e.g. a series), use a '*' to match .cbz files:
 
@@ -159,9 +159,11 @@ default: don't rescale
 
 </details>
 
-## Other uses
+## Converting images
 
-Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a ZIP archive first. There are some important caveats: non-image files will be automatically discarded, and the folder structure will be flattened (every image will be written to the same folder), meaning that files which share a name will be lost. Be very careful when using **--overwrite**.
+Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a ZIP archive first. There's an important caveat: all non-image files will be automatically discarded, be very careful when using **--overwrite**.
+
+Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression (**--quality**) on black and white images.
 
 ## Note about WebP
 
@@ -171,7 +173,7 @@ It isn't perfect however: WebP adoption outside of web browsers has been glacial
 
 **TL;DR** If you're repacking content for the purpose of sharing with others on the web, it is **strongly** advised to avoid this format, as many devices still aren't incapable of displaying them.
 
-## Why not support fully .cbr and .cb7 archives?
+## Why not fully support .cbr and .cb7 archives?
 
 Currently, reading from both formats is planned, but unimplemented. Writing won't be supported.
 
