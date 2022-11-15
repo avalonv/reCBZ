@@ -58,13 +58,16 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 
 ## Configuration
 
-### General options (won't affect file size):
+### General options:
 <details>
   <summary>Click to expand</summary>
 <br>
 
 **--nowrite**  **-nw**  
 <ul>Dry run. The repacked archive isn't saved at the end, making other options completely safe.</ul>
+
+**--overwrite**  **-O**  
+<ul>Overwrite original archive. Specifically, it will be converted to a valid .cbz structure, meaning that non-image files will be discarded. Make sure you understand what this means before using this.</ul>
 
 **--compare**  **-c**  
 <ul>Does a dry run with a small sample of images, converting them to available formats using current settings, then displays a disk usage summary for each.</ul>
@@ -77,9 +80,6 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 
 <ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. If you wish to exclude this format, you can add <b>--nowebp</b>.</ul>
 
-**--overwrite**  **-O**  (TODO)
-<ul>Overwrite the original archive. Specifically, it will be converted to a valid .cbz structure, meaning that non-image files will be discarded, and the folder structure will be flattened, any images sharing a name will be lost. Make sure you understand what this means before using this.</ul>
-
 ~~**--recursive**  **-R**~~  (TODO/Unimplemented)  see [#examples](#examples) 
 <ul>Search all subfolders in the current path for .cbz or .zip files to convert.</ul>
 
@@ -91,23 +91,38 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 **--silent**  **-s**  
 <ul>No progress messages.</ul>
 
---epub  
-<ul><b>WORK IN PROGRESS</b> Save archive as epub</ul>
-
 **--processes** *1 - 32*  
-default: CPU count - 1 (close to 100% utilization)  
+default: Core count - 1 (close to 100% utilization)  
 <ul>Max number of processes to spawn. This will only improve performance if your CPU has cores to spare (it's not magic!). <b>Warning:</b> May choke lower end systems, set this to 2 or 4 if you're experiencing high memory usage.</ul>
 
 **--sequential**  
 <ul>Disable multiprocessing altogether. Use this only if you're still experiencing memory issues, or for debugging.</ul>
 
-**--zipext** *.cbz* or *.zip*  
-default: .cbz  
-<ul>Extension for the new archive, signals to the OS which mimetype to open files with (they're the same internally).</ul>
+</details>
+
+### Archive options:
+<details>
+  <summary>Click to expand</summary>
+<br>
+
+**--epub**  
+<ul>Save archive as EPUB. -- <b>WORK IN PROGRESS</b></ul>
+
+**--zip**  
+<ul>Save archive as ZIP.</ul>
+ 
+**--cbz**  
+<ul>Save archive as CBZ. This is the default.</ul>
+
+~~**--unpack**~~ (TODO/Unimplemented)  
+<ul>Extract archive contents to a folder</ul>
+
+**--compress**  
+<ul>Attempt to further compress the archive after images have been converted. This will have a very negligible effect on file size, and is generally not recommended.</ul>
 
 </details>
 
-### Image options (will affect file size):
+### Image options:
 <details>
   <summary>Click to expand</summary>
 <br>
@@ -122,7 +137,7 @@ default: 80
 
 <ul><b>Notes:</b>
 
-<ul>Low values degrade image quality less in WebP than they do in JPEG. Similarly, grayscale images are less affected by this setting that color ones, so you can lower it a bit more when using <b>--fmt webp</b> or <b>--grayscale</b>.</ul>
+<ul>Low values degrade image quality less in WebP than they do in JPEG. Similarly, grayscale images are less affected by this setting that color ones, so generally speaking, you can lower it even more when using <b>--fmt webp</b> or <b>--grayscale</b> to save extra space.</ul>
 
 <ul>Values higher than 95 will usually <b>increase</b> file size without actually improving quality.</ul></ul>
 
@@ -135,7 +150,7 @@ default: don't rescale
 
 <ul>Add <b>--nodownscale</b> to disable downscaling, so images can only be upscaled (as long as they're less than value).</ul>
 
-<ul>1440x1920 (3:4) is suitable for most 6"/7" e-Reader screens. For smaller devices, setting this to 150% of your screen's resolution is usually the best compromise between quality and file size, still allowing you to zoom-in to read the lore critical thoughts of that moe character.</ul>
+<ul>1440x1920 (3:4) is more than suitable for 6"/7" e-Reader screens. For smaller devices, setting this to 150% of your screen's resolution is usually the best compromise between quality and file size, still allowing you to zoom-in to read the lore critical thoughts of that moe character.</ul>
 
 <ul><b>Note:</b> this isn't magic. Please don't upscale a low quality source to upload to manga sites and claim yours is higher quality, because it isn't, and it will annoy people.</ul>
 

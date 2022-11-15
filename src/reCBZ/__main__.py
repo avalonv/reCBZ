@@ -54,26 +54,6 @@ def main():
         dest="nowrite",
         action="store_true",
         help="dry run, no changes are saved at the end (safe)")
-    # mode_group.add_argument( "-u", "--unpack",
-    #     const=0,
-    #     dest="mode",
-    #     action="store_const",
-    #     help="unpack the archive to the currect directory (safe)")
-    mode_group.add_argument( "-c", "--compare",
-        const=1,
-        dest="mode",
-        action="store_const",
-        help="test a small sample with all formats and print the results (safe)")
-    mode_group.add_argument( "-a", "--assist",
-        const=2,
-        dest="mode",
-        action="store_const",
-        help="compare, then ask which format to use for a real run")
-    mode_group.add_argument( "-A" ,"--auto",
-        const=3,
-        dest="mode",
-        action="store_const",
-        help="compare, then automatically picks the best format for a real run")
     ext_group.add_argument( "-O", "--overwrite",
         default=Config.overwrite,
         dest="overwrite",
@@ -94,19 +74,50 @@ def main():
         dest="loglevel",
         action="store_const",
         help="disable all progress messages")
-    ext_group.add_argument( "--epub",
-        default=Config.outformat,
-        const='epub',
-        dest="outformat",
+    # mode_group.add_argument( "-u", "--unpack",
+    #     const=0,
+    #     dest="mode",
+    #     action="store_const",
+    #     help="unpack the archive to the currect directory (safe)")
+    mode_group.add_argument( "-c", "--compare",
+        const=1,
+        dest="mode",
         action="store_const",
-        help="save archive as epub")
+        help="test a small sample with all formats and print the results (safe)")
+    mode_group.add_argument( "-a", "--assist",
+        const=2,
+        dest="mode",
+        action="store_const",
+        help="compare, then ask which format to use for a real run")
+    mode_group.add_argument( "-A" ,"--auto",
+        const=3,
+        dest="mode",
+        action="store_const",
+        help="compare, then automatically picks the best format for a real run")
     fmt_group.add_argument( "--nowebp",
         default=Config.blacklistedfmts,
         const=f'{Config.blacklistedfmts} webp webpll',
         dest="blacklistedfmts",
         action="store_const",
         help="exclude webp from --auto and --assist")
-    process_group.add_argument("--processes",
+    ext_group.add_argument( "--epub",
+        default=Config.outformat,
+        const='epub',
+        dest="outformat",
+        action="store_const",
+        help="save archive as epub")
+    ext_group.add_argument( "--zip",
+        default=Config.outformat,
+        const='zip',
+        dest="outformat",
+        action="store_const",
+        help="save archive as zip")
+    ext_group.add_argument( "--cbz",
+        default=Config.outformat,
+        const='cbz',
+        dest="outformat",
+        action="store_const",
+        help="save archive as cbz")
     parser.add_argument( "--compress",
         default=Config.compresszip,
         dest="compresszip",
