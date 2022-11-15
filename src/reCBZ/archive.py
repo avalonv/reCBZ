@@ -194,8 +194,9 @@ class Archive():
 
     @SIGNINT_ctrl_c
     def _convert_img(self, source:Path, dest=None, force_format=None): #-> None | Str:
-        # open
         start_t = time.perf_counter()
+        LossyFmt.quality = self._convert_quality
+        # open
         try:
             mylog(f'Read img: {source.name}', progress=True)
             log_buff = f'/open:  {source}\n'
@@ -275,7 +276,6 @@ class Archive():
 
     @property
     def _img_validformats(self) -> tuple:
-        LossyFmt.quality = self._convert_quality
         all_fmts = (Png, Jpeg, WebpLossy, WebpLossless)
         try:
             blacklist = self._fmt_blacklist.lower().split(' ')
