@@ -91,12 +91,12 @@ def repack_fp(fp:str) -> str:
             raise InterruptedError
     if not Config.nowrite:
         if Config.overwrite:
-            dest = Path.joinpath(Path(fp).parents[0], f'{Path(fp).stem}')
+            name = str(Path.joinpath(Path(fp).parents[0], f'{Path(fp).stem}'))
             Path(fp).unlink()
         # elif savedir TODO
         else:
-            dest = Path.cwd()
-        results = book.write_archive(Config.outformat, file_name=str(dest))
+            name = str(Path.joinpath(Path.cwd(), f'{Path(fp).stem} [reCBZ]'))
+        results = book.write_archive(Config.outformat, file_name=name)
     else:
         results = fp
     new_stats = {'name':Path(results).stem,

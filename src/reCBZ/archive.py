@@ -96,7 +96,7 @@ class Archive():
             new_path = Path(f'{file_name}.{book_format}')
         else:
             # write to current dir
-            new_path = Path(f'{self._source_stem}{Archive.new_id}.{book_format}')
+            new_path = Path(f'{self._source_stem}.{book_format}')
         if new_path.exists():
             mylog(f'Write .{book_format}: {new_path}', progress=True)
             mylog(f'{new_path} exists, removing...')
@@ -104,9 +104,9 @@ class Archive():
 
         new_path = str(new_path)
         if book_format == 'cbz':
-            return self._write_zip(new_path, ext='cbz')
+            return self._write_zip(new_path)
         elif book_format == 'zip':
-            return self._write_zip(new_path, ext='zip')
+            return self._write_zip(new_path)
         elif book_format == 'epub':
             return self._write_epub(new_path)
         elif book_format == 'mobi':
@@ -131,7 +131,7 @@ class Archive():
         def compute_single_fmt(sample_imgs, tempdir, fmt) -> tuple:
             fmtdir = Path.joinpath(tempdir, fmt.name)
             Path.mkdir(fmtdir)
-            pfunc = partial(self._convert_img, dest=fmtdir, fmt=fmt)
+            pfunc = partial(self._convert_img, dest=fmtdir, force_format=fmt)
             if self.opt_parallel:
                 results = MP_run_tasks(pfunc, sample_imgs)
             else:
@@ -164,7 +164,7 @@ class Archive():
         mylog('', progress=True)
         return tuple(sorted_fmts)
 
-    def _write_zip(self, savepath, ext):
+    def _write_zip(self, savepath):
         new_zip = ZipFile(savepath,'w')
         for source in self.fetch_pages():
             try:
