@@ -1,14 +1,26 @@
 # reCBZ - CBZ repacker
 
-CLI utility for working with comic book archives (.cbz). Can be used to save disk space, upscale, convert, and optimize comics & manga for reading on mobile devices and e-Readers. Also doubles as an extremely fast image converter.
+CLI utility for repacking comic book archives. Can be used to convert, upscale, and optimize comics & manga for reading on e-Readers and mobile devices. Also doubles as an extremely fast image converter.
 
 ### Purpose
 
-I own a fairly large library of manga, and it takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as a different format in black and white, which can cut the size of a high quality .cbz by more than half.
+I own a fairly large library of manga, which takes quite a bit of space on disk — this isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo, by resizing the pages to a slightly lower resolution, and saving them as a different format in black and white, which can cut the size of a high quality .cbz by more than half.
 
-For example, by repacking with WebP, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is quite a lot when you consider most e-Readers still have only 4GB)! And that's while still retaining an extremely high resolution, the size can be further reduced by another 50MB by downscaling to the actual display resolution — easily tripling the amount of manga that can be stored on your device.
+For example, by repacking with WebP at default settings, this cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is a lot when you consider many e-Readers still have only 4GB)! And that's without touching the resolution, the size can be further reduced by another 50MB by downscaling to the actual display resolution — easily tripling the amount of manga that can be stored on your device. Obviously, if you zoom in a lot, you'll see those pixels really are gone, but a 10MP image offers little benefit on a 7" 2MP screen.
 
-I highly recommend [Koreader](https://github.com/koreader/koreader/) if you have the time, but if you don't, this can also be used to convert CBZ files to EPUB on the fly so they can be read on Kindle devices, which now support EPUB.
+### EPUBs
+
+This tool can also be used to convert CBZ files to EPUB on the fly so they can be read on Kindle devices, which now support EPUB through "send to Kindle". Disclaimer: huge files might be discarded by the service, ask Amazon to properly support this format if you're upset with this.
+
+EPUB conversion is still a work in progress, and might stretch landscape (douple page) images. If your device supports CBZ, you might prefer it over EPUB.
+
+### Converting images
+
+The thing with CBZ files (which are essentially just ZIP files under a different name), is that they are often published with little to no image compression. This is good for the purposes of preservation, but is usually overkill for the type of devices many people read from. I wouldn't advise using this on your entire library, specially if you have the storage to spare, but if you're like me and want to carry 200 high quality tankobons on your pocket, this is one way to achieve it.
+
+Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a ZIP archive first. There's an important caveat: non-image files will be automatically discarded, be very careful when using **--overwrite**.
+
+Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression (**--quality**) on black and white images.
 
 ## Install
 
@@ -24,7 +36,7 @@ or build from source:
 
     recbz [options] files
 
-Accepts a valid .cbz or .zip file, or a collection of files. With no arguments passed, it will repack the file(s) with slightly higher compression while retaining the original format.
+Accepts a valid .cbz or .zip file, or a collection of files. With no arguments passed, it will try to repack the file(s) with slightly more compression.
 
 The output file(s) will always be saved to the current directory as `filename [reCBZ].extension`, unless **--overwrite** is specified.
 
@@ -159,12 +171,6 @@ default: don't rescale
 
 </details>
 
-## Converting images
-
-Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a ZIP archive first. There's an important caveat: all non-image files will be automatically discarded, be very careful when using **--overwrite**.
-
-Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression (**--quality**) on black and white images.
-
 ## Note about WebP
 
 Generally speaking, the WebP format tends to compress images more efficiently than both JPEG and PNG, allowing both lossy and lossless methods. This leads to a few noticeable quirks when converting from lossy to lossless and vice versa, which are covered [here](https://developers.google.com/speed/webp/faq#can_a_webp_image_grow_larger_than_its_source_image), but overall, if you're confident your reading software supports it, this is probably the best option for saving disk space.
@@ -173,14 +179,12 @@ It isn't perfect however: WebP adoption outside of web browsers has been glacial
 
 **TL;DR** If you're repacking content for the purpose of sharing with others on the web, it is **strongly** advised to avoid this format, as many devices still aren't incapable of displaying them.
 
-## Why not fully support .cbr and .cb7 archives?
+## Why not support .cbr and .cb7 archives?
 
-Currently, reading from both formats is planned, but unimplemented. Writing won't be supported.
+Both WinRAR (.cbr) and 7zip (.cb7) are non-standard file compression programs. Undoubtedly they have helped many people compress files on PC, but they are not pre-installed on most operating systems, and thus cannot be opened on most mobile devices and e-Readers without some tinkering. Additionally, WinRAR is a proprietary program which limits official access to Windows, as the name suggests, which makes it annoying for future users that plan to read in other devices, and cannot be bundled with free software (such as this).
 
-Both WinRAR (.cbr) and 7z (.cb7) are non-standard file compression programs. Undoubtedly they have helped many people compress files on PC, but they are not pre-installed on most operating systems, and thus cannot be opened on most mobile devices and e-Readers without some tinkering. Additionally, WinRAR is a proprietary program which limits official access to Windows, as the name suggests, which makes it annoying for future users that plan to read in other devices, and cannot be bundled with free software (such as this).
-
-Also, the compression algorithm used to pack images into a comic book archive has a negligible effect on the finished archive size, as the images are already compressed, so even if these programs *can* achieve higher compression ratios than zlib/zip in theory, they offer little to no advantage for image content.
+Also, the compression algorithm used to pack images into a comic book archive has a negligible effect on the finished archive size, as the images are already compressed, so even if these programs *can* achieve higher compression ratios than zlib/zip in most cases, they offer little to no advantage for image content.
 
 **TL;DR** If distributing manga or comics over the high seas **PLEASE** stick to the standard .cbz format, as it's guaranteed to work on nearly every device. RAR is bad. Stop using RAR for this.
 
-WIP/TODO ~~If you need to convert .cbr or .cb7 files to .cbz, use this [script](link).~~
+You can use [7zip](https://www.7-zip.org/) to convert .cbr and .cb7 files to .cbz.
