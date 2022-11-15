@@ -81,7 +81,7 @@ def repack_fp(fp:str) -> str:
     source_stats = {'name':Path(fp).stem,
                     'size':Path(fp).stat().st_size,
                     'type':Path(fp).suffix[1:]}
-    book.convert_pages(Config.quality)
+    book.convert_pages() # page attributes are inherited from Config at init
     new_pages = len(book.fetch_pages())
     discarded = source_pages - new_pages
     if discarded > 0:
