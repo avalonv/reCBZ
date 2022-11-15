@@ -169,10 +169,10 @@ class Archive():
         for source in self.fetch_pages():
             try:
                 dest = Path(source).relative_to(self.tempdir)
-                # minimal effect on filesize. TODO further testing on how it
-                # affects time to open in an ereader required
-                new_zip.write(source, dest, ZIP_DEFLATED, 9)
-                # new_zip.write(source, dest)
+                if self._zip_compress:
+                    new_zip.write(source, dest, ZIP_DEFLATED, 9)
+                else:
+                    new_zip.write(source, dest, ZIP_STORED)
             except ValueError:
                 msg = 'Path is being screwy. Does tempdir exist? '
                 msg += str(self.tempdir.exists())

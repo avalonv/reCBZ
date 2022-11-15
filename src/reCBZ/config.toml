@@ -16,7 +16,7 @@ processes = 0
 # default format to save archives as
 outformat = 'cbz'
 # whether to further compress the zipfile after repacking
-compresszip = true
+compresszip = false
 # number of images to sample when comparing image formats
 samplecount = 10
 # dry run. archive won't be saved, even if overwrite is used

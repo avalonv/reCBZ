@@ -107,6 +107,12 @@ def main():
         action="store_const",
         help="exclude webp from --auto and --assist")
     process_group.add_argument("--processes",
+    parser.add_argument( "--compress",
+        default=Config.compresszip,
+        dest="compresszip",
+        action="store_true",
+        help="attempt to further compress the archive when repacking")
+    process_group.add_argument("--process",
         default=Config.processes,
         choices=(range(1,33)),
         metavar="[1-32]",
@@ -118,13 +124,6 @@ def main():
         dest="parallel",
         action="store_false",
         help="disable multiprocessing")
-    # parser.add_argument( "--zipcompress",
-    #     default=Config.compresslevel,
-    #     choices=(range(10)),
-    #     metavar="[0-9]",
-    #     dest="compresslevel",
-    #     type=int,
-    #     help="compression level for the archive. 0 (default) recommended")
     fmt_group.add_argument( "--fmt",
         default=Config.imageformat,
         choices=('jpeg', 'png', 'webp', 'webpll'),
