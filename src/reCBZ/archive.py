@@ -24,6 +24,7 @@ class Archive():
     source_id:str = 'Source'
     new_id:str = ' [reCBZ]'
     temp_prefix:str = f'reCBZCACHE_'
+    validbookformats:tuple = ('cbz', 'zip', 'epub', 'mobi')
 
     def __init__(self, filename:str):
         mylog('Archive: __init__')
@@ -31,7 +32,7 @@ class Archive():
             self.source_path:Path = Path(filename)
         else:
             raise ValueError(f"{filename}: invalid path")
-        self.source_stem = self.source_path.stem
+        self._source_stem = self.source_path.stem
         self.opt_parallel = Config.parallel
         self.opt_ignore = Config.ignore
         self._zip_compress = Config.compresszip
@@ -87,46 +88,33 @@ class Archive():
         mylog('', progress=True)
         return tuple(extracted)
 
-    def pack_archive(self, bookformat='cbz', dest='') -> str:
-        if bookformat in ('cbz', 'zip'):
-            if dest != '':
-                new_path = Path.joinpath(Path(dest),
-                                         Path(f'{self.source_path}.{bookformat}'))
-            else:
-                new_path = Path(f'{self.source_stem}{Archive.new_id}.{bookformat}')
-            if new_path.exists():
-                mylog(f'Write .{bookformat}: {new_path}', progress=True)
-                mylog(f'{new_path} exists, removing...')
-                new_path.unlink()
-            new_zip = ZipFile(new_path,'w')
-            for source in self.fetch_pages():
-                try:
-                    dest = Path(source).relative_to(self.tempdir)
-                    # minimal effect on filesize. TODO further testing on how it
-                    # affects time to open in an ereader required
-                    new_zip.write(source, dest, ZIP_DEFLATED, 9)
-                    # new_zip.write(source, dest)
-                except ValueError:
-                    msg = 'Path is being screwy. Does tempdir exist? '
-                    msg += str(self.tempdir.exists())
-                    msg += '\nwe might not have joined paths correctly in trans img'
-                    raise ValueError(msg)
-            new_zip.close()
-            return str(new_path)
-
-        elif bookformat == 'epub':
-            from reCBZ.epub import single_volume_epub
-            title = self.source_stem
-            mylog(f'Write .epub: {title}.epub', progress=True)
-            new_path = single_volume_epub(title, self.fetch_pages())
-            return new_path
-
-        elif bookformat == 'mobi':
-            # unimplemented
-            return ''
-
+    def write_archive(self, book_format='cbz', file_name:str='') -> str:
+        if book_format not in Archive.validbookformats:
+            raise ValueError(f"Invalid format '{book_format}'")
+        if file_name != '':
+            parent = Path(file_name).parents[0]
+            if not (parent.exists() and parent.is_dir()):
+                raise ValueError(f"Parent folder '{parent}' does not exist")
+            new_path = Path(f'{file_name}.{book_format}')
         else:
-            raise ValueError(f"Invalid format '{bookformat}'")
+            # write to current dir
+            new_path = Path(f'{self._source_stem}{Archive.new_id}.{book_format}')
+        if new_path.exists():
+            mylog(f'Write .{book_format}: {new_path}', progress=True)
+            mylog(f'{new_path} exists, removing...')
+            new_path.unlink()
+
+        new_path = str(new_path)
+        if book_format == 'cbz':
+            return self._write_zip(new_path, ext='cbz')
+        elif book_format == 'zip':
+            return self._write_zip(new_path, ext='zip')
+        elif book_format == 'epub':
+            return self._write_epub(new_path)
+        elif book_format == 'mobi':
+            raise NotImplementedError
+        else:
+            raise ValueError
 
     def convert_pages(self, format, quality=None, grayscale=None, size=None) -> tuple:
         if quality is not None: self._convert_quality = int(quality)
@@ -179,6 +167,33 @@ class Archive():
         mylog('', progress=True)
         return tuple(sorted_fmts)
 
+    def _write_zip(self, savepath, ext):
+        new_zip = ZipFile(savepath,'w')
+        for source in self.fetch_pages():
+            try:
+                dest = Path(source).relative_to(self.tempdir)
+                # minimal effect on filesize. TODO further testing on how it
+                # affects time to open in an ereader required
+                new_zip.write(source, dest, ZIP_DEFLATED, 9)
+                # new_zip.write(source, dest)
+            except ValueError:
+                msg = 'Path is being screwy. Does tempdir exist? '
+                msg += str(self.tempdir.exists())
+                msg += '\nwe might not have joined paths correctly in trans img'
+                raise ValueError(msg)
+        new_zip.close()
+        return savepath
+
+    def _write_epub(self, savepath):
+        from reCBZ.epub import single_volume_epub
+        title = self._source_stem
+        mylog(f'Write .epub: {title}.epub', progress=True)
+        savepath = single_volume_epub(title, self.fetch_pages())
+        return savepath
+
+    def _write_mobi(self, savepath):
+        # not implemented
+        pass
     @SIGNINT_ctrl_c
     def _transform_img(self, source:Path, dest=None, forceformat=None): #-> None | Str:
         # open

@@ -74,11 +74,11 @@ def main():
         dest="mode",
         action="store_const",
         help="compare, then automatically picks the best format for a real run")
-    # ext_group.add_argument( "-O", "--overwrite",
-    #     default=Config.overwrite,
-    #     dest="overwrite",
-    #     action="store_true",
-    #     help="overwrite the original archive")
+    ext_group.add_argument( "-O", "--overwrite",
+        default=Config.overwrite,
+        dest="overwrite",
+        action="store_true",
+        help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
         default=Config.ignore,
         dest="ignore",
@@ -95,6 +95,7 @@ def main():
         action="store_const",
         help="disable all progress messages")
     ext_group.add_argument( "--epub",
+        default=Config.outformat,
         const='epub',
         dest="outformat",
         action="store_const",

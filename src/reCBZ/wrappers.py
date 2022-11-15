@@ -51,36 +51,36 @@ def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     print(line2)
 
 
-def compare_fmts_fp(filename:str) -> tuple:
+def compare_fmts_fp(fp:str) -> tuple:
     """Run a sample with each image format, return the results"""
-    if Config.loglevel >= 0: print(shorten('[i] Analyzing', filename))
-    results = Archive(filename).compute_fmt_sizes()
+    if Config.loglevel >= 0: print(shorten('[i] Analyzing', fp))
+    results = Archive(fp).compute_fmt_sizes()
     pprint_fmt_stats(results[0], results[1:])
     return results
 
 
-def unpack_fp(filename:str) -> None:
+def unpack_fp(fp:str) -> None:
     # not implemented yet
     """Unpack the archive, converting all images within
     Returns path to repacked archive"""
-    if Config.loglevel >= 0: print(shorten('[i] Unpacking', filename))
-    unpacked = Archive(filename).extract()
+    if Config.loglevel >= 0: print(shorten('[i] Unpacking', fp))
+    unpacked = Archive(fp).extract()
     for file in unpacked:
         print(file)
     exit(1)
 
 
-def repack_fp(filename:str) -> str:
+def repack_fp(fp:str) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""
-    if Config.loglevel >= 0: print(shorten('[i] Repacking', filename))
+    if Config.loglevel >= 0: print(shorten('[i] Repacking', fp))
     start_t = time.perf_counter()
-    book = Archive(filename)
+    book = Archive(fp)
     book.extract()
     source_pages = len(book.fetch_pages())
-    source_stats = {'name':Path(filename).stem,
-                    'size':Path(filename).stat().st_size,
-                    'type':Path(filename).suffix[1:]}
+    source_stats = {'name':Path(fp).stem,
+                    'size':Path(fp).stat().st_size,
+                    'type':Path(fp).suffix[1:]}
     book.convert_pages(Config.quality)
     new_pages = len(book.fetch_pages())
     discarded = source_pages - new_pages
@@ -89,10 +89,16 @@ def repack_fp(filename:str) -> str:
         if not Config.ignore:
             print('[!] Aborting')
             raise InterruptedError
-    if Config.nowrite:
-        results = filename
+    if not Config.nowrite:
+        if Config.overwrite:
+            dest = Path.joinpath(Path(fp).parents[0], f'{Path(fp).stem}')
+            Path(fp).unlink()
+        # elif savedir TODO
+        else:
+            dest = Path.cwd()
+        results = book.write_archive(Config.outformat, file_name=str(dest))
     else:
-        results = book.pack_archive(Config.outformat)
+        results = fp
     new_stats = {'name':Path(results).stem,
                  'size':Path(results).stat().st_size,
                  'type':Path(results).suffix[1:]}
@@ -100,11 +106,11 @@ def repack_fp(filename:str) -> str:
     return results
 
 
-def assist_repack_fp(filename:str) -> str:
+def assist_repack_fp(fp:str) -> str:
     """Run a sample with each image format, then ask which to repack
     the rest of the archive with
     Returns path to repacked archive"""
-    results = compare_fmts_fp(filename)
+    results = compare_fmts_fp(fp)
     options_dic = {i : total[2] for i, total in enumerate(results[1:])}
     metavar = f'[1-{len(options_dic)}]'
     while True:
@@ -119,17 +125,17 @@ def assist_repack_fp(filename:str) -> str:
             print('[!] Aborting')
             exit(1)
     Config.imageformat = selection
-    return repack_fp(filename)
+    return repack_fp(fp)
 
 
-def auto_repack_fp(filename:str) -> str:
+def auto_repack_fp(fp:str) -> str:
     """Run a sample with each image format, then automatically pick
     the smallest format to repack the rest of the archive with
     Returns path to repacked archive"""
-    results = Archive(filename).compute_fmt_sizes()
+    results = Archive(fp).compute_fmt_sizes()
     selection = {"desc":results[1][1], "name":results[1][2]}
     fmt_name = selection['name']
     fmt_desc = selection['desc']
     if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
     Config.imageformat = fmt_name
-    return repack_fp(filename)
+    return repack_fp(fp)
