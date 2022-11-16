@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "reCBZ"
 version = "0.5.0"
-description = "Utility for repacking and optmizing manga & comic archives"
+description = "Utility for repacking and optmizing manga & comic book archives"
 readme = "README.md"
 license = { text = "GPLv3" }
 classifiers = [
@@ -17,9 +17,10 @@ classifiers = [
     "Topic :: System :: Archiving :: Compression",
     "Topic :: Utilities",
 ]
-keywords = ["manga", "comics", "cbz", "ebooks"]
+keywords = ["manga", "comics", "cbz", "ebook", "epub"]
 dependencies = [
     "pillow >= 8",
+    "ebooklib-re",
     'tomli; python_version < "3.11"',
 ]
 requires-python = ">=3.7"
