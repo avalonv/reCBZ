@@ -53,22 +53,3 @@ class Png(LosslessFmt):
     @classmethod
     def save(cls, img:Image.Image, dest):
         img.save(dest, format='PNG', optimize=True, compress_level=9)
-
-
-def determine_format(img:Image.Image):
-    PIL_fmt = img.format
-    if PIL_fmt is None:
-        raise KeyError(f"Image.format returned None")
-    elif PIL_fmt == "PNG":
-        return Png
-    elif PIL_fmt == "JPEG":
-        return Jpeg
-    elif PIL_fmt == "WEBP":
-        # https://github.com/python-pillow/Pillow/discussions/6716
-        with open(img.filename, "rb") as fp:
-            if fp.read(16)[-1:] == b"L":
-                return WebpLossless
-            else:
-                return WebpLossy
-    else:
-        raise KeyError(f"'{PIL_fmt}': invalid format")
