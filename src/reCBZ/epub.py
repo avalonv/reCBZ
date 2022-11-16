@@ -53,8 +53,8 @@ def single_volume_epub(name:str, pages:list, width='100%', height='100%') -> str
         source_fp = Path(source_fp)
         basename = source_fp.name
         static_dest = f'static/{basename}'
-        media_type = f'image/{source_fp.suffix[1:]}'
         mylog(f'writing {source_fp} to {static_dest} as {media_type}')
+        mime_type = page.fmt.mime
         chapter = epub.EpubHtml(title=f'Page {i}', file_name=f'page_{i}.xhtml',
                                 lang='en')
         chapter.content=f'''<html>
@@ -68,7 +68,7 @@ def single_volume_epub(name:str, pages:list, width='100%', height='100%') -> str
         image_content = open(source_fp, 'rb').read()
         # store read content relative to zip
         static_img = epub.EpubImage(uid=f'image_{i}', file_name=static_dest,
-                                    media_type=media_type, content=image_content)
+                                    media_type=mime_type, content=image_content)
         book.add_item(chapter)
         book.add_item(static_img)
         chapters.append(chapter)
@@ -91,8 +91,7 @@ def single_volume_epub(name:str, pages:list, width='100%', height='100%') -> str
 
 
 def multiple_volume_epub(title:str, volumes:list) -> None:
-    # unimplemented
-    pass
+    raise NotImplementedError
 
 
 if __name__ == '__main__':

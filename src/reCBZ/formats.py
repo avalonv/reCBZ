@@ -16,6 +16,7 @@ class Jpeg(LossyFmt):
     name:str = 'jpeg'
     ext:tuple = '.jpeg', '.jpg'
     desc:str = 'JPEG'
+    mime:str = 'image/jpeg'
 
     @classmethod
     def save(cls, img:Image.Image, dest):
@@ -28,6 +29,7 @@ class WebpLossy(LossyFmt):
     name:str = 'webp'
     ext:tuple = '.webp',
     desc:str = 'WebP'
+    mime:str = 'image/webp'
 
     @classmethod
     def save(cls, img:Image.Image, dest):
@@ -38,6 +40,7 @@ class WebpLossless(LosslessFmt):
     name:str = 'webpll'
     ext:tuple = '.webp',
     desc:str = 'WebP Lossless'
+    mime:str = 'image/webp'
 
     @classmethod
     def save(cls, img:Image.Image, dest):
@@ -49,6 +52,7 @@ class Png(LosslessFmt):
     name:str = 'png'
     ext:tuple = '.png',
     desc:str = 'PNG'
+    mime:str = 'image/png'
 
     @classmethod
     def save(cls, img:Image.Image, dest):
