@@ -7,7 +7,7 @@ except ModuleNotFoundError:
 __version__ = "0.4.1"
 CMDNAME = 'recbz'
 
-_cfg = tomllib.loads(resources.read_text("reCBZ", "config.toml"))
+_cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
 OVERWRITE = _cfg["archive"]["overwrite"]
 IGNORE = _cfg["archive"]["ignore"]
 LOGLEVEL = _cfg["archive"]["loglevel"]
