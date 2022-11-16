@@ -1,30 +1,42 @@
-# reCBZ - CBZ repacker
+# reCBZ - comic book repacker
 
-CLI utility for repacking comic book archives. Can be used to convert, upscale, and optimize comics & manga for reading on e-Readers and mobile devices. Also doubles as an extremely fast image converter.
+CLI utility to convert, upscale, and optimize comics & manga for reading on e-Readers and mobile devices. Also doubles as an extremely fast image converter.
 
 ### Purpose
 
-I own a fairly large library of manga, which takes quite a bit of space on disk — this isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo.
+I own a fairly large library of manga, which takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo.
 
-For example, by repacking with WebP at default settings, this cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is a lot when you consider many e-Readers still have only 4GB)! And that's without touching the resolution, the size can be further reduced by another 50MB by downscaling to the actual display resolution — easily tripling the amount of manga that can be stored on your device (while maintaining the same perceived quality).
-
-### EPUBs
-
-This tool can also be used to convert CBZ files to EPUB on the fly so they can be read on Kindle devices, which now support EPUB through "send to Kindle". Disclaimer: huge files might be discarded by the service, ask Amazon to properly support this format if you're upset with this.
-
-EPUB conversion is still a work in progress, and might stretch landscape (double page) images. If your device supports CBZ, you might prefer it over EPUB.
+For example, by repacking with WebP at default settings, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is a lot when you consider many e-Readers still have only 4GB)! And that's without touching the resolution, the size can be further reduced by another 50MB by downscaling to the actual display resolution — easily tripling the amount of manga that can be stored on your device (while maintaining the same perceived quality).
 
 ### Converting pages
 
-The thing with CBZ files (which are essentially just ZIP files under a different name), is that they are often published with little to no image compression. This is good for the purposes of preservation, but is usually overkill for the type of devices many people read from. Additionally, if you're reading from a black and white screen, removing the color information can save another 20% to 30% in size. I wouldn't advise using this on your entire library, specially if you have the storage to spare, but if you're like me and want to carry 200 high quality tankobons on your pocket, this is one way to achieve it.
+CBZ files (which are essentially just ZIP files under a different name) are often published with little to no image compression. This is good for the purposes of preservation, but is usually overkill for the type of devices many people read from. Additionally, if you're reading from a black and white screen, removing the color information can further reduce its by 20% to 30%. I wouldn't advise using this on your entire library, specially if you have the storage to spare, but if you're like me and want to carry 200 high quality tankobons on your pocket, this is one way to achieve it.
 
-Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general (it's pretty fast at that thanks to parallel processing), you just need to pack them into a ZIP archive first. There's an important caveat: non-image files will be automatically discarded, be very careful when using **--overwrite**.
+Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general, you just need to pack them into a ZIP archive first. There's an important caveat: non-image files will be automatically discarded, be very careful when using **--overwrite**.
 
-Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same file many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression (**--quality**) on black and white images.
+Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same image many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression (**--quality**) on black and white images.
+
+### EPUBs
+
+This tool can also be used to convert CBZ files to EPUB on the fly so they can be read on Kindle devices, which now support EPUB through "send to Kindle". Disclaimer: huge files might be discarded by the service, ask Amazon to properly support this format if you're upset by this.
+
+EPUB conversion is still a work in progress. If your device supports CBZ, you might prefer it over EPUB, images usually fill more of the screen.
 
 ## Install
 
+Requires [Python](https://www.python.org/downloads/)
+
+Linux, MacOS, and Windows:
+
     python -m pip install reCBZ
+
+<details>
+  <summary>Windows</summary>
+
+Since Windows is a very competent OS, you may need to manually install `lxlm` first:
+
+    python -m pip install https://download.lfd.uci.edu/pythonlibs/archived/lxml-4.9.0-cp311-cp311-win_amd64.whl
+</details>
 
 or build from source:
 
@@ -171,7 +183,7 @@ default: don't rescale
 
 </details>
 
-Default can be changed in `defaults.toml`
+Default values for these options can be changed in `defaults.toml`
 ## Note about WebP
 
 Generally speaking, the WebP format tends to compress images more efficiently than both JPEG and PNG, allowing both lossy and lossless methods. This leads to a few noticeable quirks when converting from lossy to lossless and vice versa, which are covered [here](https://developers.google.com/speed/webp/faq#can_a_webp_image_grow_larger_than_its_source_image), but overall, if you're confident your reading software supports it, this is probably the best option for saving disk space.
