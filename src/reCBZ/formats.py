@@ -19,7 +19,7 @@ class Jpeg(LossyFmt):
 
     @classmethod
     def save(cls, img:Image.Image, dest):
-        img.save(dest, optimize=True, quality=cls.quality)
+        img.save(dest, format='JPEG', optimize=True, quality=cls.quality)
 
 
 class WebpLossy(LossyFmt):
@@ -31,7 +31,7 @@ class WebpLossy(LossyFmt):
 
     @classmethod
     def save(cls, img:Image.Image, dest):
-        img.save(dest, lossless=cls.lossless, method=5, quality=cls.quality)
+        img.save(dest, fomrat='WEBP', lossless=cls.lossless, method=5, quality=cls.quality)
 
 
 class WebpLossless(LosslessFmt):
@@ -42,7 +42,7 @@ class WebpLossless(LosslessFmt):
     @classmethod
     def save(cls, img:Image.Image, dest):
         # for some reason 'quality' is akin to Png compress_level when lossless
-        img.save(dest, lossless=cls.lossless, method=4, quality=100)
+        img.save(dest, format='WEBP', lossless=cls.lossless, method=4, quality=100)
 
 
 class Png(LosslessFmt):
@@ -52,7 +52,7 @@ class Png(LosslessFmt):
 
     @classmethod
     def save(cls, img:Image.Image, dest):
-        img.save(dest, optimize=True, compress_level=9)
+        img.save(dest, format='PNG', optimize=True, compress_level=9)
 
 
 def determine_format(img:Image.Image):
