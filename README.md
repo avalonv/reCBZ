@@ -109,6 +109,9 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 
 <ul><b>Note:</b> to ensure chapters are properly shown in the table of contents when converting to <b>--epub</b>, it is recommended to join all files at once (in a single command), instead of one at a time.</ul>
 
+**--noprev**  
+<ul>Ignore files previously repacked by this program. Recommended when using file pattern globbing (*), specially with <b>--join</b>.</ul>
+
 ~~**--recursive**  **-R**~~  (TODO/Unimplemented)  see [#examples](#examples) 
 <ul>Search all subfolders in the current path for .cbz or .zip files to convert.</ul>
 

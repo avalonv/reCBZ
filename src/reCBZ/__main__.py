@@ -1,6 +1,7 @@
 import os
 import argparse
 import platform
+import zipfile
 
 import reCBZ
 from reCBZ import wrappers, util
@@ -123,6 +124,11 @@ def main():
         dest="outformat",
         action="store_const",
         help="save archive as cbz")
+    parser.add_argument( "--noprev",
+        default=False,
+        dest="noprev",
+        action="store_true",
+        help="ignore previously repacked files")
     parser.add_argument( "--compress",
         default=Config.compresszip,
         dest="compresszip",
@@ -222,6 +228,19 @@ def main():
         if not len(paths) >= 2:
             print(f'{reCBZ.CMDNAME}: join: at least two files are needed')
             exit(1)
+
+    if args.noprev:
+        new = []
+        for filename in paths:
+            comment = zipfile.ZipFile(filename).comment
+            if not comment == str.encode(Config.ZIPCOMMENT):
+                new.append(filename)
+        diff = len(paths) - len(new)
+        print(f'{reCBZ.CMDNAME}: noprev: ignoring {diff} files')
+        if len(new) == 0:
+            exit(1)
+        else:
+            paths = new
 
     # everything passed
     if reCBZ.SHOWTITLE: print_title()

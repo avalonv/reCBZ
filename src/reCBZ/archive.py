@@ -307,6 +307,7 @@ class Archive():
                     new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
                 else:
                     new_zip.write(page.fp, dest, ZIP_STORED)
+        new_zip.comment = str.encode(Config.ZIPCOMMENT)
         new_zip.close()
         return savepath
 

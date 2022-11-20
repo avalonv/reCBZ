@@ -25,6 +25,7 @@ class Config():
     grayscale:bool = reCBZ.GRAYSCALE
     # LANCZOS sacrifices performance for optimal upscale quality
     resamplemethod = Image.Resampling.LANCZOS
+    ZIPCOMMENT:str = 'repacked with reCBZ'
 
     @classmethod
     def pcount(cls) -> int:
