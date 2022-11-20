@@ -84,17 +84,17 @@ def main():
         const='compare',
         dest="mode",
         action="store_const",
-        help="test a small sample with all formats and print the results (safe)")
+        help="calculate filesize when converting to each image format (safe)")
     mode_group.add_argument( "-a", "--assist",
         const='assist',
         dest="mode",
         action="store_const",
-        help="compare, then ask which format to use for a real run")
+        help="compare, then ask which format to repack with")
     mode_group.add_argument( "-A" ,"--auto",
         const='auto',
         dest="mode",
         action="store_const",
-        help="compare, then automatically picks the best format for a real run")
+        help="compare, then automatically pick the best format to repack with")
     mode_group.add_argument( "-J" ,"--join",
         const='join',
         dest="mode",
@@ -137,7 +137,7 @@ def main():
     process_group.add_argument("--process",
         default=Config.processes,
         choices=(range(1,33)),
-        metavar="[1-32]",
+        metavar="1-32",
         dest="processes",
         type=int,
         help="maximum number of processes to spawn")
@@ -149,14 +149,14 @@ def main():
     fmt_group.add_argument( "--fmt",
         default=Config.imageformat,
         choices=('jpeg', 'png', 'webp', 'webpll'),
-        metavar="fmt",
+        metavar="format",
         dest="imageformat",
         type=str,
         help="format to convert pages to: jpeg, webp, webpll, or png")
     parser.add_argument( "--quality",
         default=Config.quality,
         choices=(range(1,101)),
-        metavar="[0-95]",
+        metavar="0-95",
         dest="quality",
         type=int,
         help="save quality for lossy formats. >90 not recommended")
@@ -166,29 +166,29 @@ def main():
         dest="resolution",
         type=str,
         help="rescale images to the specified resolution")
-    parser.add_argument( "-noup", "--noupscale",
+    parser.add_argument( "--noup",
         default=Config.noupscale,
         dest="noupscale",
         action="store_true",
         help="disable upscaling with --size")
-    parser.add_argument( "-nodw", "--nodownscale",
+    parser.add_argument( "--nodown",
         default=Config.nodownscale,
         dest="nodownscale",
         action="store_true",
         help="disable downscaling with --size")
-    parser.add_argument( "-bw", "--grayscale",
+    parser.add_argument( "--bw",
         default=Config.grayscale,
         dest="grayscale",
         action="store_true",
         help="convert images to grayscale")
-    parser.add_argument( "--version",
-        dest="show_version",
-        action="store_true",
-        help="show version and exit")
     parser.add_argument( "--config",
         dest="show_config",
         action="store_true",
         help="show current settings")
+    parser.add_argument( "--version",
+        dest="show_version",
+        action="store_true",
+        help="show version and exit")
     args, unknown_args = parser.parse_known_args()
 
     # this is probably not the most pythonic way to do this

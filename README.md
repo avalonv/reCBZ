@@ -65,11 +65,15 @@ Rescale two volumes to the Kindle Paperwhite resolution, and save as EPUB:
 
     recbz --epub --size 1125x1500 'Our Dreams at Dusk v01.cbz' 'Our Dreams at Dusk v02.cbz'
 
-To repack all books in the current directory (e.g. a series), use a '*' to match .cbz files:
+To reference many files at once (e.g. a series), use a '*'. This is known as [pattern globbing](https://en.wikipedia.org/wiki/Glob_(programming)).
 
     recbz ./*.cbz
 
 - On Windows, slashes '/' should be replaced with backslashes '\\'
+
+Merge the contents of all volumes of 'How do We Relationship' into a single book:
+
+    recbz --join 'How do We Relationship'*.cbz
 
 Automatically convert and repack all books on the 'Blame!' folder:
 
@@ -94,13 +98,13 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 <ul>Overwrite original archive. Specifically, it will be converted to a valid .cbz structure, meaning that non-image files will be discarded. Make sure you understand what this means before using this.</ul>
 
 **--compare**  **-c**  
-<ul>Does a dry run with a small sample of images, converting them to available formats using current settings, then displays a disk usage summary for each.</ul>
+<ul>Calculate the filesize of each image format by converting a small sample of images, then displays a disk usage summary for each. Safe as it does not save anything.</ul>
 
 **--assist**  **-a**  
-<ul>Same as <b>--compare</b>, except it then asks you which format to use for a real run.</ul>
+<ul>Same as <b>--compare</b>, except it then asks you which format to repack the archive with.</ul>
 
 **--auto**  **-A**  
-<ul>Same as <b>--compare</b>, except it automatically picks the best/smallest format for a real run.</ul> 
+<ul>Same as <b>--compare</b>, except it automatically picks the best/smallest format to repack the archive with.</ul> 
 
 <ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. If you wish to exclude this format, you can add <b>--nowebp</b>.</ul>
 
