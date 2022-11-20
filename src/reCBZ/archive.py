@@ -298,8 +298,10 @@ class Archive():
                 if local_parent_dir is None:
                     raise OSError(f'{page.fp} not in any subpath of process cache')
 
-                dest = f'{Archive.chapter_prefix}{i+1:0{lead_zeroes}d}'
-                dest += f'/{page.fp.relative_to(local_parent_dir)}'
+                dest = ''
+                if len(chapters) > 1: # no parent if there's only one chapter
+                    dest += f'{Archive.chapter_prefix}{i+1:0{lead_zeroes}d}/'
+                dest += f'{page.fp.relative_to(local_parent_dir)}'
                 dest = Path(dest)
                 if self._zip_compress:
                     new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
