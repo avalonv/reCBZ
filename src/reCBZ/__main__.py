@@ -224,7 +224,7 @@ def main():
         parser.print_usage()
         exit(1)
 
-    if args.mode == 4:
+    if args.mode == 'join':
         if not len(paths) >= 2:
             print(f'{reCBZ.CMDNAME}: join: at least two files are needed')
             exit(1)
@@ -236,11 +236,12 @@ def main():
             if not comment == str.encode(Config.ZIPCOMMENT):
                 new.append(filename)
         diff = len(paths) - len(new)
-        print(f'{reCBZ.CMDNAME}: noprev: ignoring {diff} files')
-        if len(new) == 0:
-            exit(1)
-        else:
-            paths = new
+        if diff > 0:
+            print(f'{reCBZ.CMDNAME}: noprev: ignoring {diff} files')
+            if len(new) == 0:
+                exit(1)
+            else:
+                paths = new
 
     # everything passed
     if reCBZ.SHOWTITLE: print_title()
