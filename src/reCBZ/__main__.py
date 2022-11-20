@@ -179,6 +179,7 @@ def main():
         action="store_true",
         help="show current settings")
     args, unknown_args = parser.parse_known_args()
+
     # this is probably not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
@@ -206,30 +207,28 @@ def main():
             parser.print_help()
             print(f'\nunknown file or option: {arg}')
             exit(1)
+
     if len(paths) <= 0:
         print(f'{reCBZ.CMDNAME}: missing input file (see --help)')
         parser.print_usage()
         exit(1)
     # everything passed
     if reCBZ.SHOWTITLE: print_title()
-    mode = args.mode
-    for filename in paths:
-        try:
-            if mode is None:
-                wrappers.repack_fp(filename)
-            elif mode == 0:
-                wrappers.unpack_fp(filename)
-            elif mode == 1:
-                wrappers.compare_fmts_fp(filename)
-            elif mode == 2:
-                wrappers.assist_repack_fp(filename)
-            elif mode == 3:
-                wrappers.auto_repack_fp(filename)
-        except InterruptedError:
-            continue
-        except (KeyboardInterrupt, util.MPrunnerInterrupt):
-            print('\nGoooooooooodbye')
-            exit(1)
+    try:
+        for filename in paths:
+                if args.mode is None:
+                    wrappers.repack_fp(filename)
+                elif args.mode == 0:
+                    wrappers.unpack_fp(filename)
+                elif args.mode == 1:
+                    wrappers.compare_fmts_fp(filename)
+                elif args.mode == 2:
+                    wrappers.assist_repack_fp(filename)
+                elif args.mode == 3:
+                    wrappers.auto_repack_fp(filename)
+    except (KeyboardInterrupt, util.MPrunnerInterrupt):
+        print('\nGoooooooooodbye')
+        exit(1)
 
 
 if __name__ == '__main__':

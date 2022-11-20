@@ -88,7 +88,7 @@ def repack_fp(fp:str) -> str:
         print(f"[!] {discarded} pages couldn't be written")
         if not Config.ignore:
             print('[!] Aborting')
-            raise InterruptedError
+            return ''
     if not Config.nowrite:
         if Config.overwrite:
             name = str(Path.joinpath(Path(fp).parents[0], f'{Path(fp).stem}'))
