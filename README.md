@@ -1,42 +1,46 @@
 # reCBZ - comic book repacker
 
-CLI utility to convert, upscale, and optimize comics & manga for reading on e-Readers and mobile devices. Also doubles as an extremely fast image converter.
+CLI utility to convert, merge, upscale, and optimize comics & manga for reading on e-Readers and mobile devices. Also doubles as an extremely fast image converter.
 
 ### Purpose
 
 I own a fairly large library of manga, which takes quite a bit of space on disk. This isn't really a problem most of the time, but it limits what I can put on my Kobo e-Reader (which has "only" 32GB of storage). I prefer to keep the original files intact on [calibre](https://github.com/kovidgoyal/calibre) on my computer, but use this tool to optimize the .cbz files in bulk so they use less space on my Kobo.
 
-For example, by repacking with WebP at default settings, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is a lot when you consider many e-Readers still have only 4GB)! And that's without touching the resolution, the size can be further reduced by another 50MB by downscaling to the actual display resolution — easily tripling the amount of manga that can be stored on your device (while maintaining the same perceived quality).
+For example, by repacking with WebP at default settings, this can cut the size of the first volume of Chainsaw Man from 180MB to just under 96MB, without affecting image quality. Over the 11 published volumes, that amounts to over 1GB saved (which is a lot when you consider many e-Readers still have only 4GB)! And that's without touching the resolution, the size can be further reduced by another 50MB by downscaling to the actual display resolution — easily tripling the amount of manga that can be stored on your device, while maintaining the same perceived quality.
 
 ### Converting pages
 
-CBZ files (which are essentially just ZIP files under a different name) are often published with little to no image compression. This is good for the purposes of preservation, but is usually overkill for the type of devices many people read from. Additionally, if you're reading from a black and white screen, removing the color information can further reduce its by 20% to 30%. I wouldn't advise using this on your entire library, specially if you have the storage to spare, but if you're like me and want to carry 200 high quality tankobons on your pocket, this is one way to achieve it.
+CBZ files (which are essentially just ZIP files under a different name) are often published with little to no image compression. This is good for the purposes of preservation, but is usually overkill for the type of devices many people read from. Additionally, if you're reading from a black and white screen, removing the color information can further reduce its size by 15% to 30%. I wouldn't advise using this on your entire library, specially if you have the storage to spare, but if you're like me and want to carry 200 high quality tankobons on your pocket, this is one way to achieve it.
 
 Although this was explicitly created with manga and comics in mind, it can be used for bulk rescaling and conversion of images in general, you just need to pack them into a ZIP archive first. There's an important caveat: non-image files will be automatically discarded, be very careful when using **--overwrite**.
 
 Note that due to how lossy images formats like JPEG/WebP work, compressing and overwriting the same image many times over *will* eventually lead to image degradation that is noticeable to the naked eye, so by default this program creates an optimized copy while preserving the original, although lossless formats are also available. As a general rule, you can be more aggressive with compression (**--quality**) on black and white images.
 
+### Joining volumes
+
+Combine multiple CBZ files into a single file! If you have dozens of small chapters (or even a full series of volumes) which you'd rather store as a single contiguous unit, this tool does a pretty good job of linking them while keeping the pages in order. When writing EPUBs, it will also save each chapter/volume to the table of contents.
+
 ### EPUBs
 
-This tool can also be used to convert CBZ files to EPUB on the fly so they can be read on Kindle devices, which now support EPUB through "send to Kindle". Disclaimer: huge files might be discarded by the service, ask Amazon to properly support this format if you're upset by this.
+This program can also be used to convert CBZ files to EPUB on the fly so they can be read on Kindle devices, which now support EPUB through "send to Kindle". Disclaimer: huge files might be discarded by the service, ask Amazon to properly support this format if you're upset by this.
 
-EPUB conversion is still a work in progress. If your device supports CBZ, you might prefer it over EPUB, images usually fill more of the screen.
+EPUB support is a work in progress, currently only writing is supported. If your device supports CBZ, you might prefer it over EPUB, images usually fill more of the screen.
 
 ## Install
 
-Requires [Python](https://www.python.org/downloads/)
+Requires [Python](https://www.python.org/downloads/) ≥ 3.7
+
+<details>
+  <summary>Windows setup</summary>
+
+If you're on the latest Python version (3.11), you may need to manually install `lxml` first:
+
+    pip install https://download.lfd.uci.edu/pythonlibs/archived/lxml-4.9.0-cp311-cp311-win_amd64.whl
+</details>
 
 Linux, MacOS, and Windows:
 
     python -m pip install reCBZ
-
-<details>
-  <summary>Windows</summary>
-
-Since Windows is a very competent OS, you may need to manually install `lxlm` first:
-
-    python -m pip install https://download.lfd.uci.edu/pythonlibs/archived/lxml-4.9.0-cp311-cp311-win_amd64.whl
-</details>
 
 or build from source:
 
@@ -67,21 +71,23 @@ Rescale two volumes to the Kindle Paperwhite resolution, and save as EPUB:
 
 To reference many files at once (e.g. a series), use a '*'. This is known as [pattern globbing](https://en.wikipedia.org/wiki/Glob_(programming)).
 
+To match all .cbz files in the current directory:
+
     recbz ./*.cbz
 
 - On Windows, slashes '/' should be replaced with backslashes '\\'
 
-Merge the contents of all volumes of 'How do We Relationship' into a single book:
+Merge the contents of all volumes of 'How do We Relationship' into a single ebook:
 
-    recbz --join 'How do We Relationship'*.cbz
+    recbz --epub --join 'How do We Relationship'*.cbz
 
 Automatically convert and repack all books on the 'Blame!' folder:
 
     recbz --auto ./'Blame!'/*.cbz
 
-Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale and save as high quality JPEG:
+Rescale all .cbz files on the current folder to 1440p 3:4, convert pages to grayscale and save as high quality JPEG:
 
-    recbz --size 1440x1920 -bw --quality 90 --fmt jpeg ./Saga/*.cbz
+    recbz --size 1440x1920 --bw --fmt jpeg --quality 90 *.cbz
 </details>
 
 ## Configuration
@@ -116,11 +122,6 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 **--noprev**  
 <ul>Ignore files previously repacked by this program. Recommended when using file pattern globbing (*), specially with <b>--join</b>.</ul>
 
-~~**--recursive**  **-R**~~  (TODO/Unimplemented)  see [#examples](#examples) 
-<ul>Search all subfolders in the current path for .cbz or .zip files to convert.</ul>
-
-<ul><b>Exercise caution when using with --overwrite, may lead to loss of data.</b></ul>
-
 **--verbose**  **-v**  
 <ul>More progress messages. Can be repeated (-vv) for debug output.</ul>
 
@@ -142,7 +143,7 @@ default: Core count - 1 (close to 100% utilization)
 <br>
 
 **--epub**  
-<ul>Save archive as EPUB. -- <b>WORK IN PROGRESS</b></ul>
+<ul>Save archive as EPUB.</ul>
 
 **--zip**  
 <ul>Save archive as ZIP.</ul>
@@ -173,7 +174,7 @@ default: 80
 
 <ul><b>Notes:</b>
 
-<ul>Low values degrade image quality less in WebP than they do in JPEG. Similarly, grayscale images are less affected by this setting that color ones, so generally speaking, you can lower it even more when using <b>--fmt webp</b> or <b>--grayscale</b> to save extra space.</ul>
+<ul>Low values degrade image quality less in WebP than they do in JPEG. Similarly, grayscale images are less affected by this setting that color ones, so generally speaking, you can lower it even more when using <b>--fmt webp</b> or <b>--bw</b> to save extra space.</ul>
 
 <ul>Values higher than 95 will usually <b>increase</b> file size without actually improving quality.</ul></ul>
 
@@ -182,15 +183,15 @@ default: don't rescale
 
 <ul>Rescale images to the specified resolution, using Lanczos interpolation. Does its best to detect and preserve landscape images.</ul> 
 
-<ul>Add <b>--noupscale</b> to disable upscaling, so images can only be downscaled (as long as they're greater than value).</ul>
+<ul>Add <b>--noup</b> to disable upscaling, so images can only be downscaled (as long as they're greater than value).</ul>
 
-<ul>Add <b>--nodownscale</b> to disable downscaling, so images can only be upscaled (as long as they're less than value).</ul>
+<ul>Add <b>--nodown</b> to disable downscaling, so images can only be upscaled (as long as they're less than value).</ul>
 
 <ul>1440x1920 (3:4) is more than suitable for 6"/7" e-Reader screens. For smaller devices, setting this to 150% of your screen's resolution is usually the best compromise between quality and file size, still allowing you to zoom-in to read the lore critical thoughts of that moe character.</ul>
 
 <ul><b>Note:</b> this isn't magic. Please don't upscale a low quality source to upload to manga sites and claim yours is higher quality, because it isn't, and it will annoy people.</ul>
 
-**--grayscale**  **-bw**  
+**--bw**  
 <ul>Convert images to grayscale. Useful for e-Paper screens, reducing file size by another 10% to 20%. Provides no benefit to comics which only have a few coloured pages (manga).</ul>
 
 </details>
@@ -200,7 +201,7 @@ Default values for these options can be changed in `defaults.toml`
 
 Generally speaking, the WebP format tends to compress images more efficiently than both JPEG and PNG, allowing both lossy and lossless methods. This leads to a few noticeable quirks when converting from lossy to lossless and vice versa, which are covered [here](https://developers.google.com/speed/webp/faq#can_a_webp_image_grow_larger_than_its_source_image), but overall, if you're confident your reading software supports it, this is probably the best option for saving disk space.
 
-It isn't perfect however: WebP adoption outside of web browsers has been glacial, and it is not universally supported yet, meaning it might not open on older devices and the vast majority of e-Readers (Kindle/Kobo) — although [Koreader](https://github.com/koreader/koreader/) allows you to get around this limitation.
+It isn't perfect however: WebP adoption outside of web browsers has been glacial, and it is not universally supported yet, meaning it might not open on older devices and most e-Readers (Kindle/Kobo) — although [Koreader](https://github.com/koreader/koreader/) allows you to get around this limitation.
 
 **TL;DR** If you're repacking content for the purpose of sharing with others on the web, it is **strongly** advised to avoid this format, as many devices still aren't incapable of displaying them.
 
@@ -216,4 +217,4 @@ You can use [7zip](https://www.7-zip.org/) to convert .cbr and .cb7 files to .cb
 
 ## Credits
 
-Thanks to aerkalov for creating [Ebooklib](https://github.com/aerkalov/ebooklib), which provides EPUB conversion.
+Thanks to aerkalov for creating [Ebooklib](https://github.com/aerkalov/ebooklib), which allows EPUB conversion.
