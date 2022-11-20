@@ -90,6 +90,7 @@ class Archive():
     _CACHE_PREFIX:str = 'reCBZCACHE_'
     _global_cache_id:str = f'{_CACHE_PREFIX}{Config.tempuuid}_'
     validbookformats:tuple = ('cbz', 'zip', 'epub', 'mobi')
+    chapter_prefix:str = 'v' # :) :D C:
 
     def __init__(self, filename:str):
         mylog('Archive: __init__')
@@ -111,12 +112,25 @@ class Archive():
         self._pages_nodown = Config.nodownscale
         self._pages_filter = Config.resamplemethod
         self._index:list = []
+        self._chapter_lengths = []
+        self._chapters = []
         self._cachedir:Path = Path('.')
 
     def fetch_pages(self):
         if len(self._index) == 0:
             self._index = list(self.extract())
         return self._index
+
+    def fetch_chapters(self):
+        # ensure it's a copy, so we can't delete the actual objects
+        index_copy = [page for page in self.fetch_pages()]
+        if len(self._chapter_lengths) == 0:
+            self._chapter_lengths = [len(index_copy)]
+        chapters = []
+        for length in self._chapter_lengths:
+            chapters.append(index_copy[:length])
+            del index_copy[:length]
+        return chapters
 
     def extract(self, count:int=0, raw:bool=False) -> tuple:
         # check and clean previous cache
@@ -182,6 +196,33 @@ class Archive():
             raise NotImplementedError
         else:
             raise ValueError
+
+    def add_chapter(self, second_archive, start=None, end=None) -> tuple:
+        try:
+            assert isinstance(second_archive, Archive)
+        except AssertionError:
+            raise ValueError('second_archive is not an instance of Archive')
+
+        new_chapter = second_archive.fetch_pages()
+        if start:
+            try:
+                assert type(start) is int
+            except AssertionError:
+                raise ValueError('start must be an integer')
+            # can raise IndexError but we want it to do so
+            new_chapter = new_chapter[start:]
+        if end:
+            try:
+                assert type(start) is int
+            except AssertionError:
+                raise ValueError('end must be an integer')
+            new_chapter = new_chapter[:end]
+
+        # ensure chapter1 is populated
+        self.fetch_chapters()
+        self._chapter_lengths.append(len(new_chapter))
+        self._index.extend(new_chapter)
+        return tuple(self.fetch_pages())
 
     def convert_pages(self, fmt=None, quality=None, grayscale=None, size=None) -> tuple:
         if fmt is not None: self._pages_format = fmt
