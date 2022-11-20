@@ -169,34 +169,6 @@ class Archive():
         if raw: return raw_paths
         else: return pages
 
-    def write_archive(self, book_format='cbz', file_name:str='') -> str:
-        if book_format not in Archive.validbookformats:
-            raise ValueError(f"Invalid format '{book_format}'")
-        if file_name != '':
-            parent = Path(file_name).parents[0]
-            if not (parent.exists() and parent.is_dir()):
-                raise ValueError(f"Parent folder '{parent}' does not exist")
-            new_path = Path(f'{file_name}.{book_format}')
-        else:
-            # write to current dir
-            new_path = Path(f'{self._source_stem}.{book_format}')
-        if new_path.exists():
-            mylog(f'Write .{book_format}: {new_path}', progress=True)
-            mylog(f'{new_path} exists, removing...')
-            new_path.unlink()
-
-        new_path = str(new_path)
-        if book_format == 'cbz':
-            return self._write_zip(new_path)
-        elif book_format == 'zip':
-            return self._write_zip(new_path)
-        elif book_format == 'epub':
-            return self._write_epub(new_path)
-        elif book_format == 'mobi':
-            raise NotImplementedError
-        else:
-            raise ValueError
-
     def add_chapter(self, second_archive, start=None, end=None) -> tuple:
         try:
             assert isinstance(second_archive, Archive)
@@ -279,6 +251,34 @@ class Archive():
         mylog('', progress=True)
         return tuple(sorted_fmts)
 
+    def write_archive(self, book_format='cbz', file_name:str='') -> str:
+        if book_format not in Archive.validbookformats:
+            raise ValueError(f"Invalid format '{book_format}'")
+        if file_name != '':
+            parent = Path(file_name).parents[0]
+            if not (parent.exists() and parent.is_dir()):
+                raise ValueError(f"Parent folder '{parent}' does not exist")
+            new_path = Path(f'{file_name}.{book_format}')
+        else:
+            # write to current dir
+            new_path = Path(f'{self._source_stem}.{book_format}')
+        if new_path.exists():
+            mylog(f'Write .{book_format}: {new_path}', progress=True)
+            mylog(f'{new_path} exists, removing...')
+            new_path.unlink()
+
+        new_path = str(new_path)
+        if book_format == 'cbz':
+            return self._write_zip(new_path)
+        elif book_format == 'zip':
+            return self._write_zip(new_path)
+        elif book_format == 'epub':
+            return self._write_epub(new_path)
+        elif book_format == 'mobi':
+            raise NotImplementedError
+        else:
+            raise ValueError
+
     def _write_zip(self, savepath):
         new_zip = ZipFile(savepath,'w')
         chapters = self.fetch_chapters()
@@ -312,10 +312,14 @@ class Archive():
         return savepath
 
     def _write_epub(self, savepath):
-        from reCBZ.epub import single_volume_epub
+        from reCBZ import epub
         title = self._source_stem
         mylog(f'Write .epub: {title}.epub', progress=True)
-        savepath = single_volume_epub(title, self.fetch_pages())
+        chapters = self.fetch_chapters()
+        if len(chapters) > 1:
+            savepath = epub.multi_chapter_epub(title, chapters)
+        else:
+            savepath = epub.single_chapter_epub(title, self.fetch_pages())
         return savepath
 
     def _write_mobi(self, savepath):

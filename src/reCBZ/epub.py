@@ -17,16 +17,15 @@
 # either epub.py or ebooklib must be licensed under the AGPL as well.
 # non-commerical private use is explicitly permitted.
 # WORK IN PROGRESS
-from pathlib import Path
 from uuid import uuid4
 
-# *must* use the git version until Aleksandar updates the pypi version
+# Aleksandar needs to update the pypi version (>_<")
 from ebooklib import epub
 
-from reCBZ.util import human_sort, mylog
+from reCBZ.util import mylog
 
 
-def single_volume_epub(name:str, pages:list, width='100%', height='100%') -> str:
+def single_chapter_epub(name:str, pages:list) -> str:
     # I'm too sleep deprived to figure out why but the order is inverted
     pages = pages[::-1]
     book = epub.EpubBook()
@@ -36,61 +35,103 @@ def single_volume_epub(name:str, pages:list, width='100%', height='100%') -> str
         title, author = name.split('-', 1)
     else:
         title = name
-        author = 'Made with reCBZ'
-    book.set_identifier(str(uuid4()))
+        author = 'reCBZ'
     book.set_title(title)
-    book.set_language('en')
     book.add_author(author)
+    book.set_language('en')
+    book.set_identifier(str(uuid4()))
 
-    # do its best to sort alphanumerically TODO is it really necessary?
-    # pages = human_sort(pages)
-    covert_ops = f'cover{pages[0].fmt.ext[0]}'
-    book.set_cover(covert_ops, open(pages[0].fp, 'rb').read())
+    cover = pages[0]
+    covert_ops = f'cover{cover.fmt.ext[0]}'
+    book.set_cover(covert_ops, open(cover.fp, 'rb').read())
 
     # one chapter = one page = one image = lotsa bytes
-    chapters = []
-    for i, page in enumerate(pages, start=1):
-        # source_fp = page.fp
-        # basename = page.name
+    spine = []
+    for page_i, page in enumerate(pages, start=1):
         static_dest = f'static/{page.name}'
         mime_type = page.fmt.mime
         size_spec = f'width={page.size[0]} height={page.size[1]}'
         mylog(f'writing {page.fp} to {static_dest} as {mime_type}')
 
-        chapter = epub.EpubHtml(title=f'Page {i}', file_name=f'page_{i}.xhtml',
-                                lang='en')
-        chapter.content=f'''<html>
+        item = epub.EpubHtml(title=f'Page {page_i}',
+                             file_name=f'page_{page_i}.xhtml', lang='en')
+        item.content=f'''<html>
                             <head></head>
                             <body>
                               <img src="{static_dest}" {size_spec}'/>
                             </body>
                             </html>'''
 
-        # read bytes
         image_content = open(page.fp, 'rb').read()
         # store read content relative to zip
-        static_img = epub.EpubImage(uid=f'image_{i}', file_name=static_dest,
+        static_img = epub.EpubImage(uid=f'image_{page_i}', file_name=static_dest,
                                     media_type=mime_type, content=image_content)
-        book.add_item(chapter)
+        book.add_item(item)
         book.add_item(static_img)
-        chapters.append(chapter)
-
-    # on a per volume basis, use the index of where each volume starts,
-    # otherwise just the first page
-    book.toc = (chapters[0],)
+        spine.append(item)
+    book.toc.append(spine[0])
 
     # add navigation files
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
+    book.spine = ['cover', 'nav', *(page for page in spine)]
 
-    # create spine
-    book.spine = ['cover', 'nav', *(page for page in chapters)]
-
-    # write epub file
     source_fp = f'{name}.epub'
     epub.write_epub(source_fp, book, {})
     return source_fp
 
 
-def multiple_volume_epub(title:str, volumes:list) -> None:
-    raise NotImplementedError
+def multi_chapter_epub(name:str, chapters:list) -> str:
+    chapters = [chapter[::-1] for chapter in chapters]
+    book = epub.EpubBook()
+
+    if '-' in name:
+        title, author = name.split('-', 1)
+    else:
+        title = name
+        author = 'reCBZ'
+    book.set_title(title)
+    book.add_author(author)
+    book.set_language('en')
+    book.set_identifier(str(uuid4()))
+
+    cover = chapters[0][0]
+    covert_ops = f'cover{cover.fmt.ext[0]}'
+    book.set_cover(covert_ops, open(cover.fp, 'rb').read())
+
+    lead_zeroes = len(str(len(chapters)))
+    page_i = 1
+    spine = []
+    for chapter_i, chapter in enumerate(chapters, start=1):
+        for page in chapter: # must be inverted
+            chapter_name = f'Ch {chapter_i:0{lead_zeroes}d}'
+            static_dest = f'static/{chapter_name}/{page.name}'
+            mime_type = page.fmt.mime
+            size_spec = f'width={page.size[0]} height={page.size[1]}'
+            mylog(f'writing {page.fp} to {static_dest} as {mime_type}')
+
+            item = epub.EpubHtml(title=f'{chapter_name} Page {page_i}',
+                                    file_name=f'page_{page_i}.xhtml', lang='en')
+            item.content=f'''<html>
+                                <head></head>
+                                <body>
+                                  <img src="{static_dest}" {size_spec}'/>
+                                </body>
+                                </html>'''
+
+            image_content = open(page.fp, 'rb').read()
+            static_img = epub.EpubImage(uid=f'image_{page_i}', file_name=static_dest,
+                                        media_type=mime_type, content=image_content)
+            book.add_item(item)
+            book.add_item(static_img)
+            spine.append(item)
+            page_i += 1
+        book.toc.append(spine[len(spine)-len(chapter)])
+
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.spine = ['cover', 'nav', *(page for page in spine)]
+
+    source_fp = f'{name}.epub'
+    epub.write_epub(source_fp, book, {})
+    return source_fp
