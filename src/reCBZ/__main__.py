@@ -75,22 +75,22 @@ def main():
         action="store_const",
         help="disable all progress messages")
     # mode_group.add_argument( "-u", "--unpack",
-    #     const=0,
+    #     const='unpack',
     #     dest="mode",
     #     action="store_const",
     #     help="unpack the archive to the currect directory (safe)")
     mode_group.add_argument( "-c", "--compare",
-        const=1,
+        const='compare',
         dest="mode",
         action="store_const",
         help="test a small sample with all formats and print the results (safe)")
     mode_group.add_argument( "-a", "--assist",
-        const=2,
+        const='assist',
         dest="mode",
         action="store_const",
         help="compare, then ask which format to use for a real run")
     mode_group.add_argument( "-A" ,"--auto",
-        const=3,
+        const='auto',
         dest="mode",
         action="store_const",
         help="compare, then automatically picks the best format for a real run")
@@ -218,13 +218,13 @@ def main():
         for filename in paths:
                 if args.mode is None:
                     wrappers.repack_fp(filename)
-                elif args.mode == 0:
+                elif args.mode == 'unpack':
                     wrappers.unpack_fp(filename)
-                elif args.mode == 1:
+                elif args.mode == 'compare':
                     wrappers.compare_fmts_fp(filename)
-                elif args.mode == 2:
+                elif args.mode == 'assist':
                     wrappers.assist_repack_fp(filename)
-                elif args.mode == 3:
+                elif args.mode == 'auto':
                     wrappers.auto_repack_fp(filename)
     except (KeyboardInterrupt, util.MPrunnerInterrupt):
         print('\nGoooooooooodbye')
