@@ -104,6 +104,11 @@ Rescale all books on the "Saga" folder to 1440p 3:4, convert pages to grayscale 
 
 <ul>Most of the time this will be a <a href="#note-about-webp">.webp</a>. If you wish to exclude this format, you can add <b>--nowebp</b>.</ul>
 
+**--join**  **-J**   *file1, file2 [, file3, file4, etc]*  
+<ul>Concatenate files. Append the contents of n files to the leftmost file, in the order they appear.</ul>
+
+<ul><b>Note:</b> to ensure chapters are properly shown in the table of contents when converting to <b>--epub</b>, it is recommended to join all files at once (in a single command), instead of one at a time.</ul>
+
 ~~**--recursive**  **-R**~~  (TODO/Unimplemented)  see [#examples](#examples) 
 <ul>Search all subfolders in the current path for .cbz or .zip files to convert.</ul>
 

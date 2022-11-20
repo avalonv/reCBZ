@@ -139,3 +139,42 @@ def auto_repack_fp(fp:str) -> str:
     if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
     Config.imageformat = fmt_name
     return repack_fp(fp)
+
+
+def join_fps(main_path:str, paths:list) -> str:
+    """Concatenates the contents of paths to main_path and repacks
+    Returns path to concatenated archive"""
+    if Config.loglevel >= 0: print(shorten('[i] Repacking', main_path))
+    start_t = time.perf_counter()
+    main_book = Archive(main_path)
+    sum_size = sum(Path(file).stat().st_size for file in paths)
+    source_stats = {'name':Path(main_path).stem,
+                    'size':sum_size,
+                    'type':Path(main_path).suffix[1:]}
+    for file in paths:
+        book = Archive(file)
+        main_book.add_chapter(book)
+    source_pages = len(main_book.fetch_pages())
+    main_book.convert_pages() # page attributes are inherited from Config at init
+    new_pages = len(main_book.fetch_pages())
+    discarded = source_pages - new_pages
+    if discarded > 0:
+        print(f"[!] {discarded} pages couldn't be written")
+        if not Config.ignore:
+            print('[!] Aborting')
+            return ''
+    if not Config.nowrite:
+        if Config.overwrite:
+            name = str(Path.joinpath(Path(main_path).parents[0], f'{Path(main_path).stem}'))
+            Path(main_path).unlink()
+        # elif savedir TODO
+        else:
+            name = str(Path.joinpath(Path.cwd(), f'{Path(main_path).stem} [reCBZ]'))
+        results = main_book.write_archive(Config.outformat, file_name=name)
+    else:
+        results = main_path
+    new_stats = {'name':Path(results).stem,
+                 'size':Path(results).stat().st_size,
+                 'type':Path(results).suffix[1:]}
+    pprint_repack_stats(source_stats, new_stats, start_t)
+    return results

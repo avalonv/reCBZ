@@ -94,6 +94,11 @@ def main():
         dest="mode",
         action="store_const",
         help="compare, then automatically picks the best format for a real run")
+    mode_group.add_argument( "-J" ,"--join",
+        const='join',
+        dest="mode",
+        action="store_const",
+        help="append the contents of each file to the first/leftmost file")
     fmt_group.add_argument( "--nowebp",
         default=Config.blacklistedfmts,
         const=f'{Config.blacklistedfmts} webp webpll',
@@ -212,9 +217,17 @@ def main():
         print(f'{reCBZ.CMDNAME}: missing input file (see --help)')
         parser.print_usage()
         exit(1)
+
+    if args.mode == 4:
+        if not len(paths) >= 2:
+            print(f'{reCBZ.CMDNAME}: join: at least two files are needed')
+            exit(1)
+
     # everything passed
     if reCBZ.SHOWTITLE: print_title()
     try:
+        if args.mode == 'join':
+            wrappers.join_fps(paths[0], paths[1:])
         for filename in paths:
                 if args.mode is None:
                     wrappers.repack_fp(filename)
