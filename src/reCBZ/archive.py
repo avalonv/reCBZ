@@ -281,25 +281,30 @@ class Archive():
 
     def _write_zip(self, savepath):
         new_zip = ZipFile(savepath,'w')
-        for page in self.fetch_pages():
-            # TODO this loop might be moved to a distinct function in the
-            # future, but essentially what we're trying to achieve is determine
-            # a page's path relative to its *local* cachedir, which varies by
-            # class instance (so they don't mix) but is constant to each process
-            tempdir = Path(tempfile.gettempdir())
-            proc_cache = tempdir.glob(f'{Archive._global_cache_id}*')
-            local_parent_dir = None
-            for path in proc_cache:
-                if page.fp.is_relative_to(path):
-                    local_parent_dir = path
-            if local_parent_dir is None:
-                raise OSError(f'{page.fp} not in any subpath of process cache')
+        chapters = self.fetch_chapters()
+        lead_zeroes = len(str(len(chapters)))
+        for i, chapter in enumerate(chapters):
+            for page in chapter:
+                # TODO this loop might be moved to a distinct function in the
+                # future, but essentially what we're trying to achieve is determine
+                # a page's path relative to its *local* cachedir, which varies by
+                # class instance (so they don't mix) but is constant to each process
+                temp = Path(tempfile.gettempdir())
+                proc_cache = temp.glob(f'{Archive._global_cache_id}*')
+                local_parent_dir = None
+                for path in proc_cache:
+                    if page.fp.is_relative_to(path):
+                        local_parent_dir = path
+                if local_parent_dir is None:
+                    raise OSError(f'{page.fp} not in any subpath of process cache')
 
-            dest = Path(page.fp.relative_to(local_parent_dir))
-            if self._zip_compress:
-                new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
-            else:
-                new_zip.write(page.fp, dest, ZIP_STORED)
+                dest = f'{Archive.chapter_prefix}{i+1:0{lead_zeroes}d}'
+                dest += f'/{page.fp.relative_to(local_parent_dir)}'
+                dest = Path(dest)
+                if self._zip_compress:
+                    new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
+                else:
+                    new_zip.write(page.fp, dest, ZIP_STORED)
         new_zip.close()
         return savepath
 
