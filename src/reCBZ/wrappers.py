@@ -103,6 +103,7 @@ def repack_fp(fp:str) -> str:
                  'size':Path(results).stat().st_size,
                  'type':Path(results).suffix[1:]}
     pprint_repack_stats(source_stats, new_stats, start_t)
+    book.cleanup()
     return results
 
 
@@ -177,4 +178,5 @@ def join_fps(main_path:str, paths:list) -> str:
                  'size':Path(results).stat().st_size,
                  'type':Path(results).suffix[1:]}
     pprint_repack_stats(source_stats, new_stats, start_t)
+    main_book.cleanup()
     return results

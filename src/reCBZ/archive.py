@@ -432,3 +432,12 @@ class Archive():
             return newsize
         except (ValueError, AssertionError):
             return default_value
+
+    @classmethod
+    def cleanup(cls):
+        tempdir = Path(tempfile.gettempdir())
+        prev_dirs = tempdir.glob(f'{Archive._CACHE_PREFIX}*')
+        for path in prev_dirs:
+            assert path != tempdir # for the love of god
+            mylog(f'cleanup(): {path}]')
+            shutil.rmtree(path)
