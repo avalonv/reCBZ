@@ -26,8 +26,6 @@ from reCBZ.util import mylog
 
 
 def single_chapter_epub(name:str, pages:list) -> str:
-    # I'm too sleep deprived to figure out why but the order is inverted
-    pages = pages[::-1]
     book = epub.EpubBook()
 
     # attempt to distinguish author / title
@@ -82,7 +80,6 @@ def single_chapter_epub(name:str, pages:list) -> str:
 
 
 def multi_chapter_epub(name:str, chapters:list) -> str:
-    chapters = [chapter[::-1] for chapter in chapters]
     book = epub.EpubBook()
 
     if '-' in name:

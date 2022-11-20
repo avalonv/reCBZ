@@ -12,7 +12,7 @@ from PIL import Image
 
 from reCBZ.formats import *
 from reCBZ.config import Config
-from reCBZ.util import mylog, MP_run_tasks, SIGNINT_ctrl_c
+from reCBZ.util import mylog, MP_run_tasks, SIGNINT_ctrl_c, human_sort
 
 # TODO:
 # include docstrings
@@ -315,6 +315,11 @@ class Archive():
         from reCBZ import epub
         title = self._source_stem
         mylog(f'Write .epub: {title}.epub', progress=True)
+        # solves the need to invert. critical for windows, because files
+        # aren't remotely ordered for whatever reason.
+        # TODO for the love of god find a more elegant solution
+        paths = human_sort([page.fp for page in self._index])
+        self._index = [Page(path) for path in paths]
         chapters = self.fetch_chapters()
         if len(chapters) > 1:
             savepath = epub.multi_chapter_epub(title, chapters)
