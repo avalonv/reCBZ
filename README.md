@@ -211,7 +211,7 @@ Both WinRAR (.cbr) and 7zip (.cb7) are non-standard file compression programs. U
 
 Also, the compression algorithm used to pack images into a comic book archive has a negligible effect on the finished archive size, as the images are already compressed, so even if these programs *can* achieve higher compression ratios than zlib/zip in most cases, they offer little to no advantage for image content.
 
-**TL;DR** If distributing manga or comics over the high seas **PLEASE** stick to the standard .cbz format, as it's guaranteed to work on nearly every device. RAR is bad. Stop using RAR for this.
+**TL;DR** If distributing manga or comics over the web **PLEASE** stick to the standard .cbz format, as it's guaranteed to work on nearly every device. RAR is bad. Stop using RAR for this.
 
 You can use [7zip](https://www.7-zip.org/) to convert .cbr and .cb7 files to .cbz.
 
