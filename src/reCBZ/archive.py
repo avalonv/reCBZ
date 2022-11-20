@@ -86,9 +86,9 @@ class Page():
 
 
 class Archive():
-    source_id:str = 'Source'
-    new_id:str = ' [reCBZ]'
-    temp_prefix:str = f'reCBZCACHE_'
+    _SOURCE_NAME:str = 'Source'
+    _CACHE_PREFIX:str = 'reCBZCACHE_'
+    _global_cache_id:str = f'{_CACHE_PREFIX}{Config.tempuuid}_'
     validbookformats:tuple = ('cbz', 'zip', 'epub', 'mobi')
 
     def __init__(self, filename:str):
@@ -111,7 +111,7 @@ class Archive():
         self._pages_nodown = Config.nodownscale
         self._pages_filter = Config.resamplemethod
         self._index:list = []
-        self.tempdir:Path = Path('.')
+        self._cachedir:Path = Path('.')
 
     def fetch_pages(self):
         if len(self._index) == 0:
@@ -119,14 +119,16 @@ class Archive():
         return self._index
 
     def extract(self, count:int=0, raw:bool=False) -> tuple:
-        # check and clean previous tempdirs
-        prev_dirs = Path(tempfile.gettempdir()).glob(f'{self.temp_prefix}*')
+        # check and clean previous cache
+        tempdir = Path(tempfile.gettempdir())
+        prev_dirs = tempdir.glob(f'{Archive._CACHE_PREFIX}*')
         for path in prev_dirs:
-            assert path != tempfile.gettempdir() # for the love of god
-            mylog(f'{path} exists, cleaning up')
-            shutil.rmtree(path)
+            assert path != tempdir # for the love of god
+            if not str(Archive._global_cache_id) in str(path):
+                mylog(f'hex {Archive._global_cache_id} not in {path}, cleaning up')
+                shutil.rmtree(path)
 
-        self.tempdir = Path(tempfile.mkdtemp(prefix=f'{self.temp_prefix}'))
+        self._cachedir = Path(tempfile.mkdtemp(prefix=Archive._global_cache_id))
         try:
             source_zip = ZipFile(self.source_path)
         except BadZipFile as err:
@@ -143,14 +145,14 @@ class Archive():
 
         mylog(f'Extracting: {self.source_path}', progress=True)
         for file in compressed_files:
-            source_zip.extract(file, self.tempdir)
+            source_zip.extract(file, self._cachedir)
 
         # god bless you Georgy https://stackoverflow.com/a/50927977/
-        raw_files = tuple(filter(Path.is_file, Path(self.tempdir).rglob('*')))
-        pages = tuple(Page(path) for path in raw_files)
+        raw_paths = tuple(filter(Path.is_file, Path(self._cachedir).rglob('*')))
+        pages = tuple(Page(path) for path in raw_paths)
 
         mylog('', progress=True)
-        if raw: return raw_files
+        if raw: return raw_paths
         else: return pages
 
     def write_archive(self, book_format='cbz', file_name:str='') -> str:
@@ -196,8 +198,8 @@ class Archive():
         return tuple(self._index)
 
     def compute_fmt_sizes(self) -> tuple:
-        def compute_single_fmt(sample_pages, tempdir, fmt) -> tuple:
-            fmtdir = Path.joinpath(tempdir, fmt.name)
+        def compute_single_fmt(sample_pages, cachedir, fmt) -> tuple:
+            fmtdir = Path.joinpath(cachedir, fmt.name)
             Path.mkdir(fmtdir)
 
             pfunc = partial(self._convert_page, savedir=fmtdir, format=fmt)
@@ -215,13 +217,13 @@ class Archive():
         source_pages = self.extract(count=self._fmt_samples)
         nbytes = sum(page.fp.stat().st_size for page in source_pages)
         source_fmt = source_pages[0].fmt
-        source_fsize = [nbytes, f'{Archive.source_id} ({source_fmt.desc})',
+        source_fsize = [nbytes, f'{Archive._SOURCE_NAME} ({source_fmt.desc})',
                         source_fmt.name]
 
         # compute the size of each format after converting.
         # one thread per individual format. n processes per thread
         fmt_fsizes = []
-        pfunc = partial(compute_single_fmt, source_pages, self.tempdir)
+        pfunc = partial(compute_single_fmt, source_pages, self._cachedir)
         if self.opt_parallel:
             with ThreadPool(processes=len(self._valid_page_formats)) as Tpool:
                 fmt_fsizes.extend(Tpool.map(pfunc, self._valid_page_formats))
@@ -239,17 +241,24 @@ class Archive():
     def _write_zip(self, savepath):
         new_zip = ZipFile(savepath,'w')
         for page in self.fetch_pages():
-            try:
-                dest = page.fp.relative_to(self.tempdir)
-                if self._zip_compress:
-                    new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
-                else:
-                    new_zip.write(page.fp, dest, ZIP_STORED)
-            except ValueError:
-                msg = 'Path is being screwy. Does tempdir exist? '
-                msg += str(self.tempdir.exists())
-                msg += '\nwe might not have joined paths correctly in trans img'
-                raise ValueError(msg)
+            # TODO this loop might be moved to a distinct function in the
+            # future, but essentially what we're trying to achieve is determine
+            # a page's path relative to its *local* cachedir, which varies by
+            # class instance (so they don't mix) but is constant to each process
+            tempdir = Path(tempfile.gettempdir())
+            proc_cache = tempdir.glob(f'{Archive._global_cache_id}*')
+            local_parent_dir = None
+            for path in proc_cache:
+                if page.fp.is_relative_to(path):
+                    local_parent_dir = path
+            if local_parent_dir is None:
+                raise OSError(f'{page.fp} not in any subpath of process cache')
+
+            dest = Path(page.fp.relative_to(local_parent_dir))
+            if self._zip_compress:
+                new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
+            else:
+                new_zip.write(page.fp, dest, ZIP_STORED)
         new_zip.close()
         return savepath
 

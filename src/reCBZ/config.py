@@ -6,6 +6,7 @@ import reCBZ
 
 
 class Config():
+    tempuuid:str = reCBZ.TEMPUUID
     overwrite:bool = reCBZ.OVERWRITE
     ignore:bool = reCBZ.IGNORE
     nowrite:bool = reCBZ.NOWRITE

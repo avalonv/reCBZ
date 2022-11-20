@@ -1,4 +1,5 @@
 from importlib import resources
+from uuid import uuid4
 try:
     import tomllib
 except ModuleNotFoundError:
@@ -6,6 +7,10 @@ except ModuleNotFoundError:
 
 __version__ = "0.5.1"
 CMDNAME = 'recbz'
+
+# global UUID for files stored in temp, so we can ensure multiple instances
+# created under the same process don't delete cache currently used by another
+TEMPUUID = str(uuid4().hex)
 
 _cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
 OVERWRITE = _cfg["archive"]["overwrite"]
