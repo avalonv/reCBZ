@@ -5,7 +5,7 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 CMDNAME = 'recbz'
 
 # global UUID for files stored in temp, so we can ensure multiple instances
