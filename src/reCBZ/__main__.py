@@ -45,7 +45,7 @@ def main():
             usage="%(prog)s [options] files.cbz",
             epilog=f"for detailed documentation, see {readme}")
     mode_group = parser.add_mutually_exclusive_group()
-    fmt_group = parser.add_mutually_exclusive_group()
+    imgfmt_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
     log_group = parser.add_mutually_exclusive_group()
     process_group = parser.add_mutually_exclusive_group()
@@ -100,7 +100,7 @@ def main():
         dest="mode",
         action="store_const",
         help="append the contents of each file to the first/leftmost file")
-    fmt_group.add_argument( "--nowebp",
+    imgfmt_group.add_argument( "--nowebp",
         default=Config.blacklistedfmts,
         const=f'{Config.blacklistedfmts} webp webpll',
         dest="blacklistedfmts",
@@ -146,7 +146,7 @@ def main():
         dest="parallel",
         action="store_false",
         help="disable multiprocessing")
-    fmt_group.add_argument( "--fmt",
+    imgfmt_group.add_argument( "--imgfmt",
         default=Config.imageformat,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="format",

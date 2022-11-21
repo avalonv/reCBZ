@@ -87,7 +87,7 @@ Automatically convert and repack all books on the 'Blame!' folder:
 
 Rescale all .cbz files on the current folder to 1440p 3:4, convert pages to grayscale and save as high quality JPEG:
 
-    recbz --size 1440x1920 --bw --fmt jpeg --quality 90 *.cbz
+    recbz --size 1440x1920 --bw --imgfmt jpeg --quality 90 *.cbz
 </details>
 
 ## Configuration
@@ -164,7 +164,7 @@ default: Core count - 1 (close to 100% utilization)
   <summary>Click to expand</summary>
 <br>
 
-**--fmt** *format*  
+**--imgfmt** *format*  
 default: same as source  
 <ul>Format to convert images to. One of: <i>jpeg, png, webp</i> or <i>webpll</i> — png and webpll are <a href='https://en.wikipedia.org/wiki/Lossless_compression'>lossless</a>. Try <b>-c</b> to get an idea of how they compare, this will vary depending on the source format. Omitting this option will preserve the original format.</ul>
 
@@ -174,7 +174,7 @@ default: 80
 
 <ul><b>Notes:</b>
 
-<ul>Low values degrade image quality less in WebP than they do in JPEG. Similarly, grayscale images are less affected by this setting that color ones, so generally speaking, you can lower it even more when using <b>--fmt webp</b> or <b>--bw</b> to save extra space.</ul>
+<ul>Low values degrade image quality less in WebP than they do in JPEG. Similarly, grayscale images are less affected by this setting that color ones, so generally speaking, you can lower it even more when using <b>--imgfmt webp</b> or <b>--bw</b> to save extra space.</ul>
 
 <ul>Values higher than 95 will usually <b>increase</b> file size without actually improving quality.</ul></ul>
 
