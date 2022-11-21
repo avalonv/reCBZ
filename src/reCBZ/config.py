@@ -13,7 +13,7 @@ class Config():
     loglevel:int = reCBZ.LOGLEVEL
     parallel:bool = reCBZ.PARALLEL
     processes:int = reCBZ.PROCESSES
-    outformat:str = reCBZ.OUTFORMAT
+    bookformat:str = reCBZ.BOOKFORMAT
     compresszip:int = reCBZ.COMPRESSZIP
     samplescount:int = reCBZ.SAMPLECOUNT
     blacklistedfmts:str = reCBZ.BLACKLISTEDFMTS

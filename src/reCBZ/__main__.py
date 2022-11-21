@@ -107,19 +107,19 @@ def main():
         action="store_const",
         help="exclude webp from --auto and --assist")
     ext_group.add_argument( "--epub",
-        default=Config.outformat,
+        default=Config.bookformat,
         const='epub',
         dest="outformat",
         action="store_const",
         help="save archive as epub")
     ext_group.add_argument( "--zip",
-        default=Config.outformat,
+        default=Config.bookformat,
         const='zip',
         dest="outformat",
         action="store_const",
         help="save archive as zip")
     ext_group.add_argument( "--cbz",
-        default=Config.outformat,
+        default=Config.bookformat,
         const='cbz',
         dest="outformat",
         action="store_const",

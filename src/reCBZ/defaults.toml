@@ -14,7 +14,7 @@ parallel = true
 # max number of processes to spawn. 0 will use all available CPUs
 processes = 0
 # default format to save archives as
-outformat = 'cbz'
+bookformat = 'cbz'
 # whether to further compress the zipfile after repacking
 compresszip = false
 # number of images to sample when comparing image formats

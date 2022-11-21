@@ -96,7 +96,7 @@ def repack_fp(fp:str) -> str:
         # elif savedir TODO
         else:
             name = str(Path.joinpath(Path.cwd(), f'{Path(fp).stem} [reCBZ]'))
-        results = book.write_archive(Config.outformat, file_name=name)
+        results = book.write_archive(Config.bookformat, file_name=name)
     else:
         results = fp
     new_stats = {'name':Path(results).stem,
@@ -171,7 +171,7 @@ def join_fps(main_path:str, paths:list) -> str:
         # elif savedir TODO
         else:
             name = str(Path.joinpath(Path.cwd(), f'{Path(main_path).stem} [reCBZ]'))
-        results = main_book.write_archive(Config.outformat, file_name=name)
+        results = main_book.write_archive(Config.bookformat, file_name=name)
     else:
         results = main_path
     new_stats = {'name':Path(results).stem,
