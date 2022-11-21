@@ -1,4 +1,6 @@
 # reCBZ - comic book repacker
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Favalonv%2FreCBZ.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Favalonv%2FreCBZ?ref=badge_shield)
+
 
 CLI utility to convert, merge, upscale, and optimize comics & manga for reading on e-Readers and mobile devices. Also doubles as an extremely fast image converter.
 
@@ -218,3 +220,7 @@ You can use [7zip](https://www.7-zip.org/) to convert .cbr and .cb7 files to .cb
 ## Credits
 
 Thanks to aerkalov for creating [Ebooklib](https://github.com/aerkalov/ebooklib), which allows EPUB conversion.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Favalonv%2FreCBZ.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Favalonv%2FreCBZ?ref=badge_large)
