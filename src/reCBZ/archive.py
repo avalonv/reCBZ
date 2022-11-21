@@ -445,4 +445,7 @@ class Archive():
         for path in prev_dirs:
             assert path != tempdir # for the love of god
             mylog(f'cleanup(): {path}]')
-            shutil.rmtree(path)
+            try:
+                shutil.rmtree(path)
+            except PermissionError:
+                mylog(f"PermissionError, couldn't clean {path}")
