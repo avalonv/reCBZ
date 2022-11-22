@@ -1,28 +1,34 @@
 import os
+from importlib import resources
 
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 from PIL import Image
 
 import reCBZ
 
 
 class Config():
+    _cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
     tempuuid:str = reCBZ.TEMPUUID
-    overwrite:bool = reCBZ.OVERWRITE
-    ignore:bool = reCBZ.IGNORE
-    nowrite:bool = reCBZ.NOWRITE
-    loglevel:int = reCBZ.LOGLEVEL
-    parallel:bool = reCBZ.PARALLEL
-    processes:int = reCBZ.PROCESSES
-    bookformat:str = reCBZ.BOOKFORMAT
-    compresszip:int = reCBZ.COMPRESSZIP
-    samplescount:int = reCBZ.SAMPLECOUNT
-    blacklistedfmts:str = reCBZ.BLACKLISTEDFMTS
-    imageformat:str = reCBZ.IMAGEFORMAT
-    quality:int = reCBZ.QUALITY
-    resolution:str = reCBZ.RESOLUTION
-    noupscale:bool = reCBZ.NOUPSCALE
-    nodownscale:bool = reCBZ.NODOWNSCALE
-    grayscale:bool = reCBZ.GRAYSCALE
+    overwrite:bool = _cfg["archive"]["overwrite"]
+    ignore:bool = _cfg["archive"]["ignore"]
+    nowrite:bool = _cfg["archive"]["nowrite"]
+    loglevel:int = _cfg["archive"]["loglevel"]
+    parallel:bool = _cfg["archive"]["parallel"]
+    processes:int = _cfg["archive"]["processes"]
+    bookformat:str = _cfg["archive"]["bookformat"]
+    compresszip:int = _cfg["archive"]["compresszip"]
+    samplescount:int = _cfg["archive"]["samplecount"]
+    blacklistedfmts:str = _cfg["archive"]["blacklistedfmts"]
+    imageformat:str = _cfg["archive"]["imageformat"]
+    quality:int = _cfg["archive"]["quality"]
+    resolution:str = _cfg["archive"]["resolution"]
+    noupscale:bool = _cfg["archive"]["noupscale"]
+    nodownscale:bool = _cfg["archive"]["nodownscale"]
+    grayscale:bool = _cfg["archive"]["grayscale"]
     # LANCZOS sacrifices performance for optimal upscale quality
     resamplemethod = Image.Resampling.LANCZOS
     ZIPCOMMENT:str = 'repacked with reCBZ'

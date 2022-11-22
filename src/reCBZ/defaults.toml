@@ -21,8 +21,6 @@ compresszip = false
 samplecount = 10
 # dry run. archive won't be saved, even if overwrite is used
 nowrite = false
-# whether to print the 'recbz.py' title at the beginning
-showtitle = true
 # space separated list of formats to exclude from --compare
 blacklistedfmts = ''
 
