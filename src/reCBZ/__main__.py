@@ -51,22 +51,18 @@ def main():
     process_group = parser.add_mutually_exclusive_group()
     # TODO clean leftover options
     parser.add_argument( "-nw", "--nowrite",
-        default=Config.nowrite,
         dest="nowrite",
         action="store_true",
         help="dry run, no changes are saved at the end (safe)")
     ext_group.add_argument( "-O", "--overwrite",
-        default=Config.overwrite,
         dest="overwrite",
         action="store_true",
         help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
-        default=Config.ignore,
         dest="ignore",
         action="store_true",
         help="ignore file errors when writing pages (dangerous)")
     log_group.add_argument( "-v", "--verbose",
-        default=Config.loglevel,
         dest="loglevel",
         action="count",
         help="increase verbosity of progress messages, repeatable: -vvv")
@@ -101,25 +97,21 @@ def main():
         action="store_const",
         help="append the contents of each file to the first/leftmost file")
     imgfmt_group.add_argument( "--nowebp",
-        default=Config.blacklistedfmts,
         const=f'{Config.blacklistedfmts} webp webpll',
         dest="blacklistedfmts",
         action="store_const",
         help="exclude webp from --auto and --assist")
     ext_group.add_argument( "--epub",
-        default=Config.bookformat,
         const='epub',
         dest="outformat",
         action="store_const",
         help="save archive as epub")
     ext_group.add_argument( "--zip",
-        default=Config.bookformat,
         const='zip',
         dest="outformat",
         action="store_const",
         help="save archive as zip")
     ext_group.add_argument( "--cbz",
-        default=Config.bookformat,
         const='cbz',
         dest="outformat",
         action="store_const",
@@ -130,31 +122,26 @@ def main():
         action="store_true",
         help="ignore previously repacked files")
     parser.add_argument( "--compress",
-        default=Config.compresszip,
         dest="compresszip",
         action="store_true",
         help="attempt to further compress the archive when repacking")
     process_group.add_argument("--process",
-        default=Config.processes,
         choices=(range(1,33)),
         metavar="1-32",
         dest="processes",
         type=int,
         help="maximum number of processes to spawn")
     process_group.add_argument( "--sequential",
-        default=Config.parallel,
         dest="parallel",
         action="store_false",
         help="disable multiprocessing")
     imgfmt_group.add_argument( "--imgfmt",
-        default=Config.imageformat,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="format",
         dest="imageformat",
         type=str,
         help="format to convert pages to: jpeg, webp, webpll, or png")
     parser.add_argument( "--quality",
-        default=Config.quality,
         choices=(range(1,101)),
         metavar="0-95",
         dest="quality",
@@ -162,17 +149,14 @@ def main():
         help="save quality for lossy formats. >90 not recommended")
     parser.add_argument( "--size",
         metavar="WidthxHeight",
-        default=Config.resolution,
         dest="resolution",
         type=str,
         help="rescale images to the specified resolution")
     parser.add_argument( "--noup",
-        default=Config.noupscale,
         dest="noupscale",
         action="store_true",
         help="disable upscaling with --size")
     parser.add_argument( "--nodown",
-        default=Config.nodownscale,
         dest="nodownscale",
         action="store_true",
         help="disable downscaling with --size")
@@ -194,7 +178,7 @@ def main():
     # this is probably not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
-        if key in Config.__dict__.keys():
+        if key in Config.__dict__.keys() and val is not None:
             setattr(Config, key, val)
     if args.show_config:
         for key, val in Config.__dict__.items():
