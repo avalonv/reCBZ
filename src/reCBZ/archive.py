@@ -106,7 +106,7 @@ class Archive():
         self._fmt_samples = Config.samplescount
         self._pages_format = Config.imageformat
         self._pages_quality = Config.quality
-        self._pages_size = Config.resolution
+        self._pages_size = Config.size
         self._pages_bw = Config.grayscale
         self._pages_noup = Config.noupscale
         self._pages_nodown = Config.nodownscale
@@ -197,6 +197,7 @@ class Archive():
         return tuple(self.fetch_pages())
 
     def convert_pages(self, fmt=None, quality=None, grayscale=None, size=None) -> tuple:
+        # TODO assert values are the right type
         if fmt is not None: self._pages_format = fmt
         if quality is not None: self._pages_quality = int(quality)
         if grayscale is not None: self._pages_bw = bool(grayscale)
@@ -380,10 +381,10 @@ class Archive():
         if self._pages_bw:
             log_buff += '|trans: mode L\n' # me lol
             img = img.convert('L')
-        if all(self._new_page_size):
-            log_buff += f'|trans: resize to {self._new_page_size}\n'
+        if all(self._pages_size):
+            log_buff += f'|trans: resize to {self._pages_size}\n'
             width, height = img.size
-            new_size = self._new_page_size
+            new_size = self._pages_size
             # preserve aspect ratio for landscape images
             if width > height:
                 new_size = new_size[::-1]
@@ -431,17 +432,6 @@ class Archive():
         valid_fmts = tuple(fmt for fmt in all_fmts if fmt.name not in blacklist)
         assert len(valid_fmts) >= 1, "valid_formats is 0"
         return valid_fmts
-
-    @property
-    def _new_page_size(self) -> tuple:
-        default_value = (0,0)
-        newsize = self._pages_size.lower().strip()
-        try:
-            newsize = tuple(map(int,newsize.split('x')))
-            assert len(newsize) == 2
-            return newsize
-        except (ValueError, AssertionError):
-            return default_value
 
     @classmethod
     def cleanup(cls):

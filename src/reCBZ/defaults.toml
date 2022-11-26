@@ -30,8 +30,8 @@ blacklistedfmts = ''
 imageformat = ''
 # compression quality for lossy images
 quality = 80
-# new image width / height. set to 0x0 to preserve original dimensions
-resolution = "0x0"
+# new image width / height. set to 0,0 to preserve original dimensions
+size = [0,0]
 # set to True to disable upscaling of images smaller than resolution
 noupscale = false
 # set to True to disable downscaling of images larger than resolution

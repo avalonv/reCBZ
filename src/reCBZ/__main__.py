@@ -149,7 +149,7 @@ def main():
         help="save quality for lossy formats. >90 not recommended")
     parser.add_argument( "--size",
         metavar="WidthxHeight",
-        dest="resolution",
+        dest="size_str",
         type=str,
         help="rescale images to the specified resolution")
     parser.add_argument( "--noup",
@@ -175,14 +175,26 @@ def main():
         help="show version and exit")
     args, unknown_args = parser.parse_known_args()
 
+    if args.size_str is not None:
+        newsize = args.size_str.lower().strip()
+        try:
+            newsize = tuple(map(int,newsize.split('x')))
+            assert len(newsize) == 2
+            Config.size = newsize
+        except (ValueError, AssertionError):
+            print(f'{reCBZ.CMDNAME}: size: invalid option "{args.size_str}"')
+            exit(1)
+
     # this is probably not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
         if key in Config.__dict__.keys() and val is not None:
             setattr(Config, key, val)
+
     if args.show_config:
         for key, val in Config.__dict__.items():
             print(f"{key} = {val}")
+
     if args.show_version:
         print(f'{reCBZ.CMDNAME} v{reCBZ.__version__}')
         exit(0)

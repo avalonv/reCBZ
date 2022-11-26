@@ -25,7 +25,7 @@ class Config():
     blacklistedfmts:str = _cfg["archive"]["blacklistedfmts"]
     imageformat:str = _cfg["archive"]["imageformat"]
     quality:int = _cfg["archive"]["quality"]
-    resolution:str = _cfg["archive"]["resolution"]
+    size:tuple = _cfg["archive"]["size"]
     noupscale:bool = _cfg["archive"]["noupscale"]
     nodownscale:bool = _cfg["archive"]["nodownscale"]
     grayscale:bool = _cfg["archive"]["grayscale"]
@@ -47,7 +47,6 @@ class Config():
                 return logical_cores
             except AssertionError:
                 return default_value
-
 
     @classmethod
     def term_width(cls) -> int:
