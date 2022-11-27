@@ -46,7 +46,7 @@ def single_chapter_epub(name:str, pages:list) -> str:
     # one chapter = one page = one image = lotsa bytes
     spine = []
     for page_i, page in enumerate(pages, start=1):
-        static_dest = f'static/{page.name}'
+        static_dest = f'static/{page_i}{page.fmt.ext[0]}'
         mime_type = page.fmt.mime
         size_spec = f'width={page.size[0]} height={page.size[1]}'
         mylog(f'writing {page.fp} to {static_dest} as {mime_type}')
@@ -102,7 +102,7 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
     for chapter_i, chapter in enumerate(chapters, start=1):
         for page in chapter: # must be inverted
             chapter_name = f'Ch {chapter_i:0{lead_zeroes}d}'
-            static_dest = f'static/{chapter_name}/{page.name}'
+            static_dest = f'static/{chapter_name}/{page_i}{page.fmt.ext[0]}'
             mime_type = page.fmt.mime
             size_spec = f'width={page.size[0]} height={page.size[1]}'
             mylog(f'writing {page.fp} to {static_dest} as {mime_type}')
