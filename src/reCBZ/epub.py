@@ -29,8 +29,8 @@ def single_chapter_epub(name:str, pages:list) -> str:
     book = epub.EpubBook()
 
     # attempt to distinguish author / title
-    if '-' in name:
-        title, author = name.split('-', 1)
+    if ' - ' in name:
+        title, author = name.split(' - ', 1)
     else:
         title = name
         author = 'reCBZ'
@@ -82,8 +82,8 @@ def single_chapter_epub(name:str, pages:list) -> str:
 def multi_chapter_epub(name:str, chapters:list) -> str:
     book = epub.EpubBook()
 
-    if '-' in name:
-        title, author = name.split('-', 1)
+    if ' - ' in name:
+        title, author = name.split(' - ', 1)
     else:
         title = name
         author = 'reCBZ'
