@@ -19,7 +19,6 @@
 # WORK IN PROGRESS
 from uuid import uuid4
 
-# Aleksandar needs to update the pypi version (>_<")
 from ebooklib import epub
 
 from reCBZ.util import mylog
