@@ -7,6 +7,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 from PIL import Image
 
+from reCBZ.profiles import profiles_list
 import reCBZ
 
 
@@ -31,6 +32,7 @@ class Config():
     grayscale:bool = _cfg["archive"]["grayscale"]
     # LANCZOS sacrifices performance for optimal upscale quality
     resamplemethod = Image.Resampling.LANCZOS
+    bookprofile = None
     ZIPCOMMENT:str = 'repacked with reCBZ'
 
     @classmethod
@@ -61,3 +63,16 @@ class Config():
             print("[!] Can't determine terminal size, defaulting to 78 cols")
             max_width = 78
         return max_width
+
+    @classmethod
+    def set_profile(cls, name) -> None:
+        dic = {prof.nickname:prof for prof in profiles_list}
+        try:
+            profile = dic[name]
+        except KeyError:
+            raise ValueError(f'Invalid profile {name}')
+        cls.grayscale = profile.gray
+        cls.size = profile.size
+        if profile.prefer_epub:
+            cls.bookformat = 'epub'
+        cls.bookprofile = profile

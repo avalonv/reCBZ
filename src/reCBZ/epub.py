@@ -22,6 +22,7 @@ from uuid import uuid4
 from ebooklib import epub
 
 from reCBZ.util import mylog
+from reCBZ.config import Config
 
 
 def single_chapter_epub(name:str, pages:list) -> str:
@@ -47,7 +48,14 @@ def single_chapter_epub(name:str, pages:list) -> str:
     for page_i, page in enumerate(pages, start=1):
         static_dest = f'static/{page_i}{page.fmt.ext[0]}'
         mime_type = page.fmt.mime
-        size_spec = f'width={page.size[0]} height={page.size[1]}'
+        if Config.bookprofile is not None:
+            if page.landscape:
+                height, width = Config.bookprofile.size
+            else:
+                width, height = Config.bookprofile.size
+        else:
+            width, height = page.size
+        size_str = f'width={width} height={height}'
         mylog(f'writing {page.fp} to {static_dest} as {mime_type}')
 
         item = epub.EpubHtml(title=f'Page {page_i}',
@@ -55,9 +63,9 @@ def single_chapter_epub(name:str, pages:list) -> str:
         item.content=f'''<html>
                             <head></head>
                             <body>
-                              <img src="{static_dest}" {size_spec}'/>
+                                <img src="{static_dest}" {size_str}'/>
                             </body>
-                            </html>'''
+                         </html>'''
 
         image_content = open(page.fp, 'rb').read()
         # store read content relative to zip
@@ -73,7 +81,13 @@ def single_chapter_epub(name:str, pages:list) -> str:
     book.add_item(epub.EpubNav())
     book.spine = ['cover', 'nav', *(page for page in spine)]
 
-    source_fp = f'{name}.epub'
+    if Config.bookprofile is not None:
+        for prop in Config.bookprofile.epub_properties:
+            book.add_metadata(*prop)
+        source_fp = f'{name}{Config.bookprofile.epub_ext}'
+    else:
+        source_fp = f'{name}.epub'
+
     epub.write_epub(source_fp, book, {})
     return source_fp
 
@@ -103,7 +117,14 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
             chapter_name = f'Ch {chapter_i:0{lead_zeroes}d}'
             static_dest = f'static/{chapter_name}/{page_i}{page.fmt.ext[0]}'
             mime_type = page.fmt.mime
-            size_spec = f'width={page.size[0]} height={page.size[1]}'
+            if Config.bookprofile is not None:
+                if page.landscape:
+                    height, width = Config.bookprofile.size
+                else:
+                    width, height = Config.bookprofile.size
+            else:
+                width, height = page.size
+            size_str = f'width={width} height={height}'
             mylog(f'writing {page.fp} to {static_dest} as {mime_type}')
 
             item = epub.EpubHtml(title=f'{chapter_name} Page {page_i}',
@@ -111,9 +132,9 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
             item.content=f'''<html>
                                 <head></head>
                                 <body>
-                                  <img src="{static_dest}" {size_spec}'/>
+                                    <img src="{static_dest}" {size_str}'/>
                                 </body>
-                                </html>'''
+                             </html>'''
 
             image_content = open(page.fp, 'rb').read()
             static_img = epub.EpubImage(uid=f'image_{page_i}', file_name=static_dest,
@@ -128,6 +149,12 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
     book.add_item(epub.EpubNav())
     book.spine = ['cover', 'nav', *(page for page in spine)]
 
-    source_fp = f'{name}.epub'
+    if Config.bookprofile is not None:
+        for prop in Config.bookprofile.epub_properties:
+            book.add_metadata(*prop)
+        source_fp = f'{name}{Config.bookprofile.epub_ext}'
+    else:
+        source_fp = f'{name}.epub'
+
     epub.write_epub(source_fp, book, {})
     return source_fp

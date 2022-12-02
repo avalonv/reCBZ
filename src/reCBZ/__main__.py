@@ -6,6 +6,7 @@ import zipfile
 import reCBZ
 from reCBZ import wrappers, util
 from reCBZ.config import Config
+from reCBZ.profiles import profiles_list
 
 
 def print_title() -> None:
@@ -96,6 +97,16 @@ def main():
         dest="mode",
         action="store_const",
         help="append the contents of each file to the first/leftmost file")
+    parser.add_argument( "-p", "--profile",
+        metavar="",
+        dest="profile",
+        type=str,
+        help="target device profile. run --profiles to show available options")
+    parser.add_argument( "--profiles",
+        default=False,
+        dest="show_profiles",
+        action='store_true',
+        help=argparse.SUPPRESS)
     imgfmt_group.add_argument( "--nowebp",
         const=f'{Config.blacklistedfmts} webp webpll',
         dest="blacklistedfmts",
@@ -175,6 +186,15 @@ def main():
         help="show version and exit")
     args, unknown_args = parser.parse_known_args()
 
+    # set profile first, ensure it can be overriden by explicit options
+    if args.profile is not None:
+        prof_name = args.profile.upper()
+        try:
+            Config.set_profile(prof_name)
+        except KeyError:
+            print(f'{reCBZ.CMDNAME}: profile: invalid option "{prof_name}"')
+            exit(1)
+
     if args.size_str is not None:
         newsize = args.size_str.lower().strip()
         try:
@@ -198,6 +218,12 @@ def main():
 
     if args.show_version:
         print(f'{reCBZ.CMDNAME} v{reCBZ.__version__}')
+        exit(0)
+
+    if args.show_profiles:
+        print(f'{reCBZ.CMDNAME} -p ...')
+        for prof in profiles_list:
+            print(prof.nickname, '=', prof.desc)
         exit(0)
 
     # parse files
