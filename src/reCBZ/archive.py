@@ -8,7 +8,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from reCBZ.formats import *
 from reCBZ.config import Config
@@ -356,7 +356,7 @@ class Archive():
             log_buff = f'/open:  {page.fp}\n'
             source_fmt = page.fmt
             img = page.img
-        except IOError as err:
+        except (IOError, UnidentifiedImageError) as err:
             if self.opt_ignore:
                 mylog(f"{page.fp}: can't open file as image, ignoring...'")
                 return None
