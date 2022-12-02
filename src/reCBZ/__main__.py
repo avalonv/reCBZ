@@ -168,7 +168,7 @@ def main():
     parser.add_argument( "--config",
         dest="show_config",
         action="store_true",
-        help="show current settings")
+        help="show current settings and exit")
     parser.add_argument( "--version",
         dest="show_version",
         action="store_true",
@@ -194,6 +194,7 @@ def main():
     if args.show_config:
         for key, val in Config.__dict__.items():
             print(f"{key} = {val}")
+        exit(0)
 
     if args.show_version:
         print(f'{reCBZ.CMDNAME} v{reCBZ.__version__}')
