@@ -71,6 +71,13 @@ class Page():
     def size(self):
         return self.img.size
 
+    @property
+    def landscape(self):
+        if self.size[0] > self.size[1]:
+            return True
+        else:
+            return False
+
     def save(self, dest):
         self.fmt.save(self.img, dest)
         self.fp = Path(dest)
@@ -386,7 +393,7 @@ class Archive():
             width, height = img.size
             new_size = self._pages_size
             # preserve aspect ratio for landscape images
-            if width > height:
+            if page.landscape:
                 new_size = new_size[::-1]
             n_width, n_height = new_size
             # downscaling
