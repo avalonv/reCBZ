@@ -103,7 +103,7 @@ def main():
         help="exclude webp from --auto and --assist")
     ext_group.add_argument( "--epub",
         const='epub',
-        dest="outformat",
+        dest="bookformat",
         action="store_const",
         help="save archive as epub")
     ext_group.add_argument( "--zip",
