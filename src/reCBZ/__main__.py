@@ -89,19 +89,19 @@ def main():
         const='compare',
         dest="mode",
         action="store_const",
-        help="calculate filesize when converting to each image format (safe)")
+        help=argparse.SUPPRESS)
     mode_group.add_argument( "-a", "--assist",
         default=None,
         const='assist',
         dest="mode",
         action="store_const",
-        help="compare, then ask which format to repack with")
+        help="calculate size of each image format, then ask which to repack with")
     mode_group.add_argument( "-A" ,"--auto",
         default=None,
         const='auto',
         dest="mode",
         action="store_const",
-        help="compare, then automatically pick the best format to repack with")
+        help="calculate size, then automatically pick the best one to repack with")
     mode_group.add_argument( "-J" ,"--join",
         default=None,
         const='join',
@@ -113,18 +113,12 @@ def main():
         metavar="",
         dest="profile",
         type=str,
-        help="target device profile. run --profiles to show available options")
+        help="target device profile. run --profiles to see available options")
     parser.add_argument( "--profiles",
         default=False,
         dest="show_profiles",
         action='store_true',
         help=argparse.SUPPRESS)
-    imgfmt_group.add_argument( "--nowebp",
-        default=None,
-        const=f'{Config.blacklistedfmts} webp webpll',
-        dest="blacklistedfmts",
-        action="store_const",
-        help="exclude webp from --auto and --assist")
     ext_group.add_argument( "--epub",
         default=None,
         const='epub',
@@ -195,6 +189,12 @@ def main():
         dest="nodownscale",
         action="store_true",
         help="disable downscaling with --size")
+    imgfmt_group.add_argument( "--nowebp",
+        default=None,
+        const=f'{Config.blacklistedfmts} webp webpll',
+        dest="blacklistedfmts",
+        action="store_const",
+        help="exclude webp from --auto and --assist")
     parser.add_argument( "--bw",
         default=None,
         dest="grayscale",
