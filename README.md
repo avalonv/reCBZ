@@ -53,7 +53,7 @@ Accepts a valid .cbz or .zip file, or a collection of files. With no arguments p
 
 The output file(s) will always be saved to the current directory as `filename [reCBZ].extension`, unless **--overwrite** is specified.
 
-See the [Wiki](https://github.com/avalonv/reCBZ/wiki) for a list options and ebook profiles.
+Use `--help` or see the [Wiki](https://github.com/avalonv/reCBZ/wiki) for a list options and ebook profiles.
 
 Default values for most options can be changed in `defaults.toml`
 
