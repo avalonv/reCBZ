@@ -128,13 +128,13 @@ def main():
     ext_group.add_argument( "--zip",
         default=None,
         const='zip',
-        dest="outformat",
+        dest="bookformat",
         action="store_const",
         help="save archive as zip")
     ext_group.add_argument( "--cbz",
         default=None,
         const='cbz',
-        dest="outformat",
+        dest="bookformat",
         action="store_const",
         help="save archive as cbz")
     parser.add_argument( "--noprev",
