@@ -8,7 +8,7 @@ from reCBZ.util import human_bytes, pct_change, shorten, mylog
 
 
 def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
-    lines = f'┌─ Disk size ({reCBZ.SAMPLECOUNT}' + \
+    lines = f'┌─ Disk size ({Config.samplescount}' + \
              ' pages) with present settings:\n'
     # justify to the left and right respectively. effectively the same
     # as using f'{part1: <25} | {part2: >8}\n'
