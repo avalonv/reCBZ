@@ -2,6 +2,7 @@ import os
 import argparse
 import platform
 import zipfile
+import re
 
 import reCBZ
 from reCBZ import wrappers, util
@@ -242,8 +243,10 @@ def main():
             setattr(Config, key, val)
 
     if args.show_config:
+        private = re.compile('classmethod|^_')
         for key, val in Config.__dict__.items():
-            print(f"{key} = {val}")
+            if not private.search(str(key)) and not private.search(str(val)):
+                print(f"{key} = {val}")
         exit(0)
 
     if args.show_version:
