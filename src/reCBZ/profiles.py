@@ -73,28 +73,28 @@ class KoboNia(Kobo):
 
 class Kindle68(Kindle):
     nickname = 'PW5'
-    desc = 'Kindle Paperwhite 11th gen (6.8")'
+    desc = 'Kindle Paperwhite (11th gen)'
     size = (1246, 1648)
     gray = True
 
 
 class Kindle300(Kindle):
     nickname = 'PW3'
-    desc = 'Kindle Paperwhite 7-10th gen / Basic 10th gen'
+    desc = 'Kindle Paperwhite (7-10th gen)/Basic (10th gen)'
     size = (1072, 1448)
     gray = True
 
 
 class Kindle212(Kindle):
     nickname = 'PW2'
-    desc = 'Kindle Paperwhite 5-6th gen'
+    desc = 'Kindle Paperwhite (5-6th gen)'
     size = (758, 1024)
     gray = True
 
 
 class Kindle167(Kindle):
     nickname = 'KT2'
-    desc = 'Kindle Basic 7-8th gen'
+    desc = 'Kindle Basic (7-8th gen)'
     size = (600, 800)
     gray = True
 

@@ -41,11 +41,11 @@ def unix_like_glob(arglist:list) -> list:
 
 def main():
     # o god who art in heaven please guard mine anime girls
-    readme='https://github.com/avalonv/reCBZ/blob/master/README.md#usage'
+    wiki='https://github.com/avalonv/reCBZ/wiki'
     parser = argparse.ArgumentParser(
             prog=reCBZ.CMDNAME,
             usage="%(prog)s [options] files.cbz",
-            epilog=f"for detailed documentation, see {readme}")
+            epilog=f"for detailed documentation, see {wiki}")
     mode_group = parser.add_mutually_exclusive_group()
     imgfmt_group = parser.add_mutually_exclusive_group()
     ext_group = parser.add_mutually_exclusive_group()
