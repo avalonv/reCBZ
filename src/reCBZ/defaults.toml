@@ -18,7 +18,7 @@ bookformat = 'cbz'
 # whether to further compress the zipfile after repacking
 compresszip = false
 # number of images to sample when comparing image formats
-samplecount = 10
+samplecount = 5
 # dry run. archive won't be saved, even if overwrite is used
 nowrite = false
 # space separated list of formats to exclude from --compare
