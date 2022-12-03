@@ -54,7 +54,7 @@ def main():
     # TODO clean leftover options
     parser.add_argument( "-nw", "--nowrite",
         default=None,
-        dest="nowrite",
+        dest="no_write",
         action="store_true",
         help="dry run, no changes are saved at the end (safe)")
     ext_group.add_argument( "-O", "--overwrite",
@@ -64,7 +64,7 @@ def main():
         help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
         default=None,
-        dest="ignore",
+        dest="ignore_err",
         action="store_true",
         help="ignore file errors when writing pages (dangerous)")
     log_group.add_argument( "-v", "--verbose",
@@ -122,19 +122,19 @@ def main():
     ext_group.add_argument( "--epub",
         default=None,
         const='epub',
-        dest="bookformat",
+        dest="archive_format",
         action="store_const",
         help="save archive as epub")
     ext_group.add_argument( "--zip",
         default=None,
         const='zip',
-        dest="bookformat",
+        dest="archive_format",
         action="store_const",
         help="save archive as zip")
     ext_group.add_argument( "--cbz",
         default=None,
         const='cbz',
-        dest="bookformat",
+        dest="archive_format",
         action="store_const",
         help="save archive as cbz")
     parser.add_argument( "--noprev",
@@ -144,7 +144,7 @@ def main():
         help="ignore previously repacked files")
     parser.add_argument( "--compress",
         default=None,
-        dest="compresszip",
+        dest="compress_zip",
         action="store_true",
         help="attempt to further compress the archive when repacking")
     process_group.add_argument("--process",
@@ -163,14 +163,14 @@ def main():
         default=None,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="format",
-        dest="imageformat",
+        dest="img_format",
         type=str,
         help="format to convert pages to: jpeg, webp, webpll, or png")
     parser.add_argument( "--quality",
         default=None,
         choices=(range(1,101)),
         metavar="0-95",
-        dest="quality",
+        dest="img_quality",
         type=int,
         help="save quality for lossy formats. >90 not recommended")
     parser.add_argument( "--size",
@@ -181,18 +181,18 @@ def main():
         help="rescale images to the specified resolution")
     parser.add_argument( "--noup",
         default=None,
-        dest="noupscale",
+        dest="no_upscale",
         action="store_true",
         help="disable upscaling with --size")
     parser.add_argument( "--nodown",
         default=None,
-        dest="nodownscale",
+        dest="no_downscale",
         action="store_true",
         help="disable downscaling with --size")
     imgfmt_group.add_argument( "--nowebp",
         default=None,
-        const=f'{Config.blacklistedfmts} webp webpll',
-        dest="blacklistedfmts",
+        const=f'{Config.blacklisted_fmts} webp webpll',
+        dest="blacklisted_fmts",
         action="store_const",
         help="exclude webp from --auto and --assist")
     parser.add_argument( "--bw",
@@ -231,7 +231,7 @@ def main():
         try:
             newsize = tuple(map(int,newsize.split('x')))
             assert len(newsize) == 2
-            Config.size = newsize
+            Config.img_size = newsize
         except (ValueError, AssertionError):
             print(f'{reCBZ.CMDNAME}: size: invalid option "{args.size_str}"')
             exit(1)
@@ -303,18 +303,18 @@ def main():
     if reCBZ.SHOWTITLE: print_title()
     try:
         if args.mode == 'join':
-            wrappers.join_fps(paths[0], paths[1:])
+            wrappers.join_archives(paths[0], paths[1:])
         for filename in paths:
                 if args.mode is None:
-                    wrappers.repack_fp(filename)
+                    wrappers.repack_archive(filename)
                 elif args.mode == 'unpack':
-                    wrappers.unpack_fp(filename)
+                    wrappers.unpack_archive(filename)
                 elif args.mode == 'compare':
-                    wrappers.compare_fmts_fp(filename)
+                    wrappers.compare_fmts_archive(filename)
                 elif args.mode == 'assist':
-                    wrappers.assist_repack_fp(filename)
+                    wrappers.assist_repack_archive(filename)
                 elif args.mode == 'auto':
-                    wrappers.auto_repack_fp(filename)
+                    wrappers.auto_repack_archive(filename)
     except (KeyboardInterrupt, util.MPrunnerInterrupt):
         print('\nGoooooooooodbye')
         exit(1)

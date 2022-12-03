@@ -48,11 +48,11 @@ def single_chapter_epub(name:str, pages:list) -> str:
     for page_i, page in enumerate(pages, start=1):
         static_dest = f'static/{page_i}{page.fmt.ext[0]}'
         mime_type = page.fmt.mime
-        if Config.bookprofile is not None:
+        if Config.ebook_profile is not None:
             if page.landscape:
-                height, width = Config.bookprofile.size
+                height, width = Config.ebook_profile.size
             else:
-                width, height = Config.bookprofile.size
+                width, height = Config.ebook_profile.size
         else:
             width, height = page.size
         size_str = f'width={width} height={height}'
@@ -81,10 +81,10 @@ def single_chapter_epub(name:str, pages:list) -> str:
     book.add_item(epub.EpubNav())
     book.spine = ['cover', 'nav', *(page for page in spine)]
 
-    if Config.bookprofile is not None:
-        for prop in Config.bookprofile.epub_properties:
+    if Config.ebook_profile is not None:
+        for prop in Config.ebook_profile.epub_properties:
             book.add_metadata(*prop)
-        source_fp = f'{name}{Config.bookprofile.epub_ext}'
+        source_fp = f'{name}{Config.ebook_profile.epub_ext}'
     else:
         source_fp = f'{name}.epub'
 
@@ -117,11 +117,11 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
             chapter_name = f'Ch {chapter_i:0{lead_zeroes}d}'
             static_dest = f'static/{chapter_name}/{page_i}{page.fmt.ext[0]}'
             mime_type = page.fmt.mime
-            if Config.bookprofile is not None:
+            if Config.ebook_profile is not None:
                 if page.landscape:
-                    height, width = Config.bookprofile.size
+                    height, width = Config.ebook_profile.size
                 else:
-                    width, height = Config.bookprofile.size
+                    width, height = Config.ebook_profile.size
             else:
                 width, height = page.size
             size_str = f'width={width} height={height}'
@@ -149,10 +149,10 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
     book.add_item(epub.EpubNav())
     book.spine = ['cover', 'nav', *(page for page in spine)]
 
-    if Config.bookprofile is not None:
-        for prop in Config.bookprofile.epub_properties:
+    if Config.ebook_profile is not None:
+        for prop in Config.ebook_profile.epub_properties:
             book.add_metadata(*prop)
-        source_fp = f'{name}{Config.bookprofile.epub_ext}'
+        source_fp = f'{name}{Config.ebook_profile.epub_ext}'
     else:
         source_fp = f'{name}.epub'
 

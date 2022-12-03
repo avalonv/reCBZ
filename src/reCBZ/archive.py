@@ -12,7 +12,7 @@ from PIL import Image, UnidentifiedImageError
 
 from reCBZ.formats import *
 from reCBZ.config import Config
-from reCBZ.util import mylog, MP_run_tasks, SIGNINT_ctrl_c, human_sort
+from reCBZ.util import mylog, map_workers, mp_sigint_CTRL_C, human_sort
 
 # TODO:
 # include docstrings
@@ -107,16 +107,16 @@ class Archive():
             raise ValueError(f"{filename}: invalid path")
         self._source_stem = self.source_path.stem
         self.opt_parallel = Config.parallel
-        self.opt_ignore = Config.ignore
-        self._zip_compress = Config.compresszip
-        self._fmt_blacklist = Config.blacklistedfmts
-        self._fmt_samples = Config.samplescount
-        self._pages_format = Config.imageformat
-        self._pages_quality = Config.quality
-        self._pages_size = Config.size
+        self.opt_ignore = Config.ignore_err
+        self._zip_compress = Config.compress_zip
+        self._fmt_blacklist = Config.blacklisted_fmts
+        self._fmt_samples = Config.samples_count
+        self._pages_format = Config.img_format
+        self._pages_quality = Config.img_quality
+        self._pages_size = Config.img_size
         self._pages_bw = Config.grayscale
-        self._pages_noup = Config.noupscale
-        self._pages_nodown = Config.nodownscale
+        self._pages_noup = Config.no_upscale
+        self._pages_nodown = Config.no_downscale
         self._pages_filter = Config.resamplemethod
         self._index:list = []
         self._chapter_lengths = []
@@ -129,7 +129,7 @@ class Archive():
         return self._index
 
     def fetch_chapters(self):
-        # ensure it's a copy, so we can't delete the actual objects
+        # ensure it's a copy, so we can't delete the original objects
         index_copy = [page for page in self.fetch_pages()]
         if len(self._chapter_lengths) == 0:
             self._chapter_lengths = [len(index_copy)]
@@ -212,7 +212,7 @@ class Archive():
 
         source_pages = self.fetch_pages()
         if self.opt_parallel:
-            results = MP_run_tasks(self._convert_page, source_pages)
+            results = map_workers(self._convert_page, source_pages)
         else:
             results = map(self._convert_page, source_pages)
         self._index = [page for page in results if page]
@@ -225,7 +225,7 @@ class Archive():
 
             pfunc = partial(self._convert_page, savedir=fmtdir, format=fmt)
             if self.opt_parallel:
-                results = MP_run_tasks(pfunc, sample_pages)
+                results = map_workers(pfunc, sample_pages)
             else:
                 results = map(pfunc, sample_pages)
 
@@ -343,7 +343,7 @@ class Archive():
         # TODO make public as add_page, append to self._pages
         return Page(fp)
 
-    @SIGNINT_ctrl_c
+    @mp_sigint_CTRL_C
     def _convert_page(self, source:Page, savedir=None, format=None): #-> None | Str:
         start_t = time.perf_counter()
         LossyFmt.quality = self._pages_quality

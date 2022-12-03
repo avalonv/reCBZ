@@ -4,7 +4,7 @@ from reCBZ.config import Config
 
 class LossyFmt():
     lossless:bool = False
-    quality:int = Config.quality
+    quality:int = Config.img_quality
 
 
 class LosslessFmt():

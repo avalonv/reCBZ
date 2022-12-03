@@ -15,24 +15,24 @@ class Config():
     _cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
     tempuuid:str = reCBZ.TEMPUUID
     overwrite:bool = _cfg["archive"]["overwrite"]
-    ignore:bool = _cfg["archive"]["ignore"]
-    nowrite:bool = _cfg["archive"]["nowrite"]
+    ignore_err:bool = _cfg["archive"]["ignore"]
+    no_write:bool = _cfg["archive"]["nowrite"]
     loglevel:int = _cfg["archive"]["loglevel"]
     parallel:bool = _cfg["archive"]["parallel"]
     processes:int = _cfg["archive"]["processes"]
-    bookformat:str = _cfg["archive"]["bookformat"]
-    compresszip:int = _cfg["archive"]["compresszip"]
-    samplescount:int = _cfg["archive"]["samplecount"]
-    blacklistedfmts:str = _cfg["archive"]["blacklistedfmts"]
-    imageformat:str = _cfg["archive"]["imageformat"]
-    quality:int = _cfg["archive"]["quality"]
-    size:tuple = _cfg["archive"]["size"]
-    noupscale:bool = _cfg["archive"]["noupscale"]
-    nodownscale:bool = _cfg["archive"]["nodownscale"]
+    archive_format:str = _cfg["archive"]["archiveformat"]
+    compress_zip:int = _cfg["archive"]["compresszip"]
+    samples_count:int = _cfg["archive"]["samplecount"]
+    blacklisted_fmts:str = _cfg["archive"]["blacklistedfmts"]
+    img_format:str = _cfg["archive"]["imageformat"]
+    img_quality:int = _cfg["archive"]["quality"]
+    img_size:tuple = _cfg["archive"]["size"]
+    no_upscale:bool = _cfg["archive"]["noupscale"]
+    no_downscale:bool = _cfg["archive"]["nodownscale"]
     grayscale:bool = _cfg["archive"]["grayscale"]
     # LANCZOS sacrifices performance for optimal upscale quality
     resamplemethod = Image.Resampling.LANCZOS
-    bookprofile = None
+    ebook_profile = None
     ZIPCOMMENT:str = 'repacked with reCBZ'
 
     @classmethod
@@ -72,7 +72,7 @@ class Config():
         except KeyError:
             raise ValueError(f'Invalid profile {name}')
         cls.grayscale = profile.gray
-        cls.size = profile.size
+        cls.img_size = profile.size
         # if profile.prefer_epub:
-        cls.bookformat = 'epub'
-        cls.bookprofile = profile
+        cls.archive_format = 'epub'
+        cls.ebook_profile = profile

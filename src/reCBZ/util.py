@@ -5,7 +5,6 @@ from re import split
 from multiprocessing import Pool
 from functools import wraps
 
-import reCBZ
 from reCBZ.config import Config
 
 
@@ -68,7 +67,7 @@ def pct_change(base:float, new:float) -> str:
         return f"{pct_change:.2f}%"
 
 
-def pool_ctrl_c_handler(*args, **kwargs):
+def pool_CTRL_C_handler(*args, **kwargs):
     global ctrl_c_entered
     ctrl_c_entered = True
 
@@ -78,14 +77,14 @@ def init_pool():
     global ctrl_c_entered
     global default_sigint_handler
     ctrl_c_entered = False
-    default_sigint_handler = signal.signal(signal.SIGINT, pool_ctrl_c_handler)
+    default_sigint_handler = signal.signal(signal.SIGINT, pool_CTRL_C_handler)
 
 
-def SIGNINT_ctrl_c(func):
+def mp_sigint_CTRL_C(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not 'ctrl_c_entered' in globals():
-            # init_pool hasn't been called because we're not from MP_runner
+            # init_pool hasn't been called because we're not from mp_pool_manager
             # (i.e. single threaded)
             return func(*args, **kwargs)
         global ctrl_c_entered
@@ -97,16 +96,16 @@ def SIGNINT_ctrl_c(func):
                 ctrl_c_entered = True
                 return KeyboardInterrupt()
             finally:
-                signal.signal(signal.SIGINT, pool_ctrl_c_handler)
+                signal.signal(signal.SIGINT, pool_CTRL_C_handler)
         else:
             return KeyboardInterrupt()
     return wrapper
 
 
-def MP_run_tasks(func, tasks):
+def map_workers(func, tasks):
     # GOD BLESS https://stackoverflow.com/a/68695455/
     if platform.system == 'windows':
-        # this hangs on Unix, but prevents hanging Windows (insanity)
+        # this hangs on Unix, but prevents hanging on Windows (insanity)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
     pcount = min(len(tasks), Config.pcount())
     with Pool(processes=pcount, initializer=init_pool) as MPpool:

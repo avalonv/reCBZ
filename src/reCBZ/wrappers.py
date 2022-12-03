@@ -1,14 +1,13 @@
 import time
 from pathlib import Path
 
-import reCBZ
 from reCBZ.config import Config
 from reCBZ.archive import Archive
 from reCBZ.util import human_bytes, pct_change, shorten, mylog
 
 
 def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
-    lines = f'┌─ Disk size ({Config.samplescount}' + \
+    lines = f'┌─ Disk size ({Config.samples_count}' + \
              ' pages) with present settings:\n'
     # justify to the left and right respectively. effectively the same
     # as using f'{part1: <25} | {part2: >8}\n'
@@ -51,7 +50,7 @@ def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     print(line2)
 
 
-def compare_fmts_fp(fp:str) -> tuple:
+def compare_fmts_archive(fp:str) -> tuple:
     """Run a sample with each image format, return the results"""
     if Config.loglevel >= 0: print(shorten('[i] Analyzing', fp))
     results = Archive(fp).compute_fmt_sizes()
@@ -59,7 +58,7 @@ def compare_fmts_fp(fp:str) -> tuple:
     return results
 
 
-def unpack_fp(fp:str) -> None:
+def unpack_archive(fp:str) -> None:
     # not implemented yet
     """Unpack the archive, converting all images within
     Returns path to repacked archive"""
@@ -70,7 +69,7 @@ def unpack_fp(fp:str) -> None:
     exit(1)
 
 
-def repack_fp(fp:str) -> str:
+def repack_archive(fp:str) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""
     if Config.loglevel >= 0: print(shorten('[i] Repacking', fp))
@@ -86,17 +85,17 @@ def repack_fp(fp:str) -> str:
     discarded = source_pages - new_pages
     if discarded > 0:
         print(f"[!] {discarded} pages couldn't be written")
-        if not Config.ignore:
+        if not Config.ignore_err:
             print('[!] Aborting')
             return ''
-    if not Config.nowrite:
+    if not Config.no_write:
         if Config.overwrite:
             name = str(Path.joinpath(Path(fp).parents[0], f'{Path(fp).stem}'))
             Path(fp).unlink()
         # elif savedir TODO
         else:
             name = str(Path.joinpath(Path.cwd(), f'{Path(fp).stem} [reCBZ]'))
-        results = book.write_archive(Config.bookformat, file_name=name)
+        results = book.write_archive(Config.archive_format, file_name=name)
     else:
         results = fp
     new_stats = {'name':Path(results).stem,
@@ -107,11 +106,11 @@ def repack_fp(fp:str) -> str:
     return results
 
 
-def assist_repack_fp(fp:str) -> str:
+def assist_repack_archive(fp:str) -> str:
     """Run a sample with each image format, then ask which to repack
     the rest of the archive with
     Returns path to repacked archive"""
-    results = compare_fmts_fp(fp)
+    results = compare_fmts_archive(fp)
     options_dic = {i : total[2] for i, total in enumerate(results[1:])}
     metavar = f'[1-{len(options_dic)}]'
     while True:
@@ -125,11 +124,11 @@ def assist_repack_fp(fp:str) -> str:
         except KeyboardInterrupt:
             print('[!] Aborting')
             exit(1)
-    Config.imageformat = selection
-    return repack_fp(fp)
+    Config.img_format = selection
+    return repack_archive(fp)
 
 
-def auto_repack_fp(fp:str) -> str:
+def auto_repack_archive(fp:str) -> str:
     """Run a sample with each image format, then automatically pick
     the smallest format to repack the rest of the archive with
     Returns path to repacked archive"""
@@ -138,11 +137,11 @@ def auto_repack_fp(fp:str) -> str:
     fmt_name = selection['name']
     fmt_desc = selection['desc']
     if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
-    Config.imageformat = fmt_name
-    return repack_fp(fp)
+    Config.img_format = fmt_name
+    return repack_archive(fp)
 
 
-def join_fps(main_path:str, paths:list) -> str:
+def join_archives(main_path:str, paths:list) -> str:
     """Concatenates the contents of paths to main_path and repacks
     Returns path to concatenated archive"""
     if Config.loglevel >= 0: print(shorten('[i] Repacking', main_path))
@@ -161,17 +160,17 @@ def join_fps(main_path:str, paths:list) -> str:
     discarded = source_pages - new_pages
     if discarded > 0:
         print(f"[!] {discarded} pages couldn't be written")
-        if not Config.ignore:
+        if not Config.ignore_err:
             print('[!] Aborting')
             return ''
-    if not Config.nowrite:
+    if not Config.no_write:
         if Config.overwrite:
             name = str(Path.joinpath(Path(main_path).parents[0], f'{Path(main_path).stem}'))
             Path(main_path).unlink()
         # elif savedir TODO
         else:
             name = str(Path.joinpath(Path.cwd(), f'{Path(main_path).stem} [reCBZ]'))
-        results = main_book.write_archive(Config.bookformat, file_name=name)
+        results = main_book.write_archive(Config.archive_format, file_name=name)
     else:
         results = main_path
     new_stats = {'name':Path(results).stem,
