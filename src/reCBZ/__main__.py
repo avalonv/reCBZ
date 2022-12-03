@@ -199,6 +199,11 @@ def main():
         dest="grayscale",
         action="store_true",
         help="convert images to grayscale")
+    parser.add_argument( "--color",
+        default=None,
+        dest="grayscale",
+        action="store_false",
+        help="force color when using --profile")
     parser.add_argument( "--config",
         default=None,
         dest="show_config",
