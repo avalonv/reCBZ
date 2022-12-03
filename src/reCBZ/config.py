@@ -18,7 +18,7 @@ class Config():
     ignore_err:bool = _cfg["archive"]["ignore"]
     no_write:bool = _cfg["archive"]["nowrite"]
     loglevel:int = _cfg["archive"]["loglevel"]
-    parallel:bool = _cfg["archive"]["parallel"]
+    no_parallel:bool = _cfg["archive"]["noparallel"]
     processes:int = _cfg["archive"]["processes"]
     archive_format:str = _cfg["archive"]["archiveformat"]
     compress_zip:int = _cfg["archive"]["compresszip"]

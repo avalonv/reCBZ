@@ -156,8 +156,8 @@ def main():
         help="maximum number of processes to spawn")
     process_group.add_argument( "--sequential",
         default=None,
-        dest="parallel",
-        action="store_false",
+        dest="no_parallel",
+        action="store_true",
         help="disable multiprocessing")
     imgfmt_group.add_argument( "--imgfmt",
         default=None,

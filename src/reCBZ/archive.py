@@ -4,7 +4,6 @@ import time
 import tempfile
 import shutil
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
-from multiprocessing.pool import ThreadPool
 from functools import partial
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from PIL import Image, UnidentifiedImageError
 
 from reCBZ.formats import *
 from reCBZ.config import Config
-from reCBZ.util import mylog, map_workers, mp_sigint_CTRL_C, human_sort
+from reCBZ.util import mylog, map_workers, worker_sigint_CTRL_C, human_sort
 
 # TODO:
 # include docstrings
@@ -106,7 +105,6 @@ class Archive():
         else:
             raise ValueError(f"{filename}: invalid path")
         self._source_stem = self.source_path.stem
-        self.opt_parallel = Config.parallel
         self.opt_ignore = Config.ignore_err
         self._zip_compress = Config.compress_zip
         self._fmt_blacklist = Config.blacklisted_fmts
@@ -211,10 +209,7 @@ class Archive():
         if size is not None: self._pages_size = size
 
         source_pages = self.fetch_pages()
-        if self.opt_parallel:
-            results = map_workers(self._convert_page, source_pages)
-        else:
-            results = map(self._convert_page, source_pages)
+        results = map_workers(self._convert_page, source_pages)
         self._index = [page for page in results if page]
         return tuple(self._index)
 
@@ -224,10 +219,7 @@ class Archive():
             Path.mkdir(fmtdir)
 
             pfunc = partial(self._convert_page, savedir=fmtdir, format=fmt)
-            if self.opt_parallel:
-                results = map_workers(pfunc, sample_pages)
-            else:
-                results = map(pfunc, sample_pages)
+            results = map_workers(pfunc, sample_pages)
 
             converted_pages = [page for page in results if page]
             nbytes = sum(page.fp.stat().st_size for page in converted_pages)
@@ -245,11 +237,8 @@ class Archive():
         # one thread per individual format. n processes per thread
         fmt_fsizes = []
         pfunc = partial(compute_single_fmt, source_pages, self._cachedir)
-        if self.opt_parallel:
-            with ThreadPool(processes=len(self._valid_page_formats)) as Tpool:
-                fmt_fsizes.extend(Tpool.map(pfunc, self._valid_page_formats))
-        else:
-            fmt_fsizes.extend(map(pfunc, self._valid_page_formats))
+        results = map_workers(pfunc, self._valid_page_formats, multithread=True)
+        fmt_fsizes.extend(results)
 
         # finally, compare
         # in multidepth lists, sorted compares the first element by default :)
@@ -343,7 +332,7 @@ class Archive():
         # TODO make public as add_page, append to self._pages
         return Page(fp)
 
-    @mp_sigint_CTRL_C
+    @worker_sigint_CTRL_C
     def _convert_page(self, source:Page, savedir=None, format=None): #-> None | Str:
         start_t = time.perf_counter()
         LossyFmt.quality = self._pages_quality

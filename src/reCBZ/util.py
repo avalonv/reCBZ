@@ -3,6 +3,7 @@ import signal
 import platform
 from re import split
 from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 from functools import wraps
 
 from reCBZ.config import Config
@@ -80,7 +81,7 @@ def init_pool():
     default_sigint_handler = signal.signal(signal.SIGINT, pool_CTRL_C_handler)
 
 
-def mp_sigint_CTRL_C(func):
+def worker_sigint_CTRL_C(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not 'ctrl_c_entered' in globals():
@@ -102,17 +103,25 @@ def mp_sigint_CTRL_C(func):
     return wrapper
 
 
-def map_workers(func, tasks):
-    # GOD BLESS https://stackoverflow.com/a/68695455/
-    if platform.system == 'windows':
-        # this hangs on Unix, but prevents hanging on Windows (insanity)
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
+def map_workers(func, tasks, multithread=False):
     pcount = min(len(tasks), Config.pcount())
-    with Pool(processes=pcount, initializer=init_pool) as MPpool:
-        try:
-            return MPpool.map(func, tasks)
-        except KeyboardInterrupt:
-            mylog("MAY YOUR WOES BE MANY")
-            MPpool.terminate()
-            mylog("AND YOUR DAYS FEW")
-            raise MPrunnerInterrupt()
+    if Config.no_parallel:
+        return map(func, tasks)
+    elif multithread:
+        # mourn the day they inevitably condense the parallel modules in
+        # python and I have to recall how any of this works
+        with ThreadPool(processes=pcount) as Tpool:
+            return Tpool.map(func, tasks)
+    else:
+        if platform.system == 'windows':
+            # this hangs on Unix, but prevents hanging on Windows (insanity)
+            # god bless https://stackoverflow.com/a/68695455/
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+        with Pool(processes=pcount, initializer=init_pool) as MPpool:
+            try:
+                return MPpool.map(func, tasks)
+            except KeyboardInterrupt:
+                mylog("MAY YOUR WOES BE MANY")
+                MPpool.terminate()
+                mylog("AND YOUR DAYS FEW")
+                raise MPrunnerInterrupt()

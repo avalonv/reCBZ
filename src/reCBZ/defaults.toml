@@ -9,8 +9,8 @@ ignore = false
 # level of logging: -1 = quiet. 0 = overlapping progress report. 1 = streaming
 # progress report. 2 = verbose messages. >2 = everything
 loglevel = 0
-# whether to enable multiprocessing
-parallel = true
+# whether to disable multiprocessing
+noparallel = false
 # max number of processes to spawn. 0 will use all available CPUs
 processes = 0
 # default format to save archives as
