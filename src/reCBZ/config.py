@@ -73,6 +73,6 @@ class Config():
             raise ValueError(f'Invalid profile {name}')
         cls.grayscale = profile.gray
         cls.size = profile.size
-        if profile.prefer_epub:
-            cls.bookformat = 'epub'
+        # if profile.prefer_epub:
+        cls.bookformat = 'epub'
         cls.bookprofile = profile
