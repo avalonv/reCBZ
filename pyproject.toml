@@ -19,11 +19,11 @@ classifiers = [
 ]
 keywords = ["manga", "comics", "cbz", "ebook", "epub"]
 dependencies = [
-    "pillow >= 8",
+    "pillow >= 9.1",
     "ebooklib >= 0.18",
     'tomli; python_version < "3.11"',
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = ["bumpver", "pip-tools",]

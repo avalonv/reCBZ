@@ -24,7 +24,7 @@ In short, it can:
 
 ## Install
 
-Requires [Python  ≥ 3.7](https://www.python.org/downloads/)
+Requires [Python  ≥ 3.9](https://www.python.org/downloads/)
 
 <details>
   <summary>Windows setup</summary>
