@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 CMDNAME = 'recbz'
 
 # whether to print the 'recbz.py' title at the beginning
