@@ -168,11 +168,12 @@ class Archive():
 
         # god bless you Georgy https://stackoverflow.com/a/50927977/
         raw_paths = tuple(filter(Path.is_file, Path(self._cachedir).rglob('*')))
-        pages = tuple(Page(path) for path in raw_paths)
+        sorted_paths = tuple(human_sort(raw_paths))
+        sorted_pages = tuple(Page(path) for path in sorted_paths)
 
         mylog('', progress=True)
-        if raw: return raw_paths
-        else: return pages
+        if raw: return sorted_paths
+        else: return sorted_pages
 
     def add_chapter(self, second_archive, start=None, end=None) -> tuple:
         try:
@@ -210,7 +211,12 @@ class Archive():
 
         source_pages = self.fetch_pages()
         results = map_workers(self._convert_page, source_pages)
-        self._index = [page for page in results if page]
+        # solves the need to invert files in EPUB. critical for windows, because
+        # files aren't remotely ordered for whatever reason.
+        paths = human_sort([page.fp for page in self._index])
+        self._index = [Page(path) for path in paths]
+        sorted_pages = human_sort([page.fp for page in results if page is not None])
+        self._index = [Page(path) for path in sorted_pages]
         return tuple(self._index)
 
     def compute_fmt_sizes(self) -> tuple:
@@ -221,6 +227,7 @@ class Archive():
             pfunc = partial(self._convert_page, savedir=fmtdir, format=fmt)
             results = map_workers(pfunc, sample_pages)
 
+            # pages don't need to be sorted here, as they're discarded
             converted_pages = [page for page in results if page]
             nbytes = sum(page.fp.stat().st_size for page in converted_pages)
             return nbytes, fmt.desc, fmt.name
@@ -313,11 +320,6 @@ class Archive():
         from reCBZ import epub
         title = self._source_stem
         mylog(f'Write .epub: {title}.epub', progress=True)
-        # solves the need to invert. critical for windows, because files
-        # aren't remotely ordered for whatever reason.
-        # TODO for the love of god find a more elegant solution
-        paths = human_sort([page.fp for page in self._index])
-        self._index = [Page(path) for path in paths]
         chapters = self.fetch_chapters()
         if len(chapters) > 1:
             savepath = epub.multi_chapter_epub(title, chapters)
@@ -342,7 +344,7 @@ class Archive():
 
         try:
             # ensure file can be opened as image
-            mylog(f'Read img: {page.name}', progress=True)
+            mylog(f'Read file: {page.name}', progress=True)
             log_buff = f'/open:  {page.fp}\n'
             source_fmt = page.fmt
             img = page.img
@@ -407,7 +409,7 @@ class Archive():
         end_t = time.perf_counter()
         elapsed = f'{end_t-start_t:.2f}s'
         mylog(f'{log_buff}\\write: {new_fp}: took {elapsed}')
-        mylog(f'Save img: {new_fp.name}', progress=True)
+        mylog(f'Save file: {new_fp.name}', progress=True)
         return page
 
     @property
