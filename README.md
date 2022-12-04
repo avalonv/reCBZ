@@ -18,7 +18,7 @@ In short, it can:
 
 - Combine multiple files into a single contiguous book (transform multiple chapters into a single volume).
 
-- Convert CBZ files into fixed-layout EPUBs, with support for most Kindle & Kobo devices.
+- Convert CBZ files into fixed-layout EPUBs, with support for most [Kindle](https://github.com/avalonv/reCBZ/wiki/Ebook-profiles#kindle) & [Kobo](https://github.com/avalonv/reCBZ/wiki/Ebook-profiles#kobo) devices.
 
 - Make your CPU fan spin really fast.
 
@@ -55,7 +55,7 @@ The output file(s) will always be saved to the current directory as `filename [r
 
 Use `--help` or see the [Wiki](https://github.com/avalonv/reCBZ/wiki) for a list options and ebook profiles.
 
-Default values for most options can be changed in `defaults.toml`
+Default values for most options can be modified in `defaults.toml`
 
 ## Examples
 
@@ -78,11 +78,11 @@ Rescale all .cbz files on the current folder to 1440p, convert pages to grayscal
 
 ## Note about WebP
 
-Generally speaking, the WebP format tends to compress images more efficiently than both JPEG and PNG, allowing both lossy and lossless methods. This leads to a few noticeable quirks when converting from lossy to lossless and vice versa, which are covered [here](https://developers.google.com/speed/webp/faq#can_a_webp_image_grow_larger_than_its_source_image), but overall, if you're confident your reading software supports it, this is probably the best option for saving disk space.
+Generally speaking, the WebP format tends to compress images much more efficiently than both JPEG and PNG, allowing both lossy and lossless methods. This leads to a few noticeable quirks when converting from lossy to lossless and vice versa, which are covered [here](https://developers.google.com/speed/webp/faq#can_a_webp_image_grow_larger_than_its_source_image), but overall, if you're confident your reading software supports it, this almost always translates into less disk usage. Higher compression ratios also tend to affect image quality much less than with JPEG, which makes it better at preserving fine detail in busy images.
 
-It isn't perfect however: WebP adoption outside of web browsers has been glacial, and it is not universally supported yet, meaning it might not open on older devices and most e-Readers (Kindle/Kobo) — although [Koreader](https://github.com/koreader/koreader/) allows you to get around this limitation.
+It isn't perfect however: WebP adoption outside of web browsers has been glacial, and it is not universally supported yet, meaning it might not open on older devices and some e-Readers (Kobo) — although [Koreader](https://github.com/koreader/koreader/) allows you to get around this limitation.
 
-**TL;DR** If you're repacking content for the purpose of sharing with others on the web, it is **strongly** advised to avoid this format, as many devices still aren't incapable of displaying them.
+**TL;DR** If you're repacking content for the purpose of sharing with others on the web, it is recommended to avoid this format, as many devices still aren't capable of displaying them.
 
 ## Why not support .cbr and .cb7 archives?
 
