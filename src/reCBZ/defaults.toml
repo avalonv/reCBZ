@@ -4,8 +4,10 @@
 # ---------------------------------------------------------------------
 # whether to overwrite the original archive. dangerous
 overwrite = false
-# ignore errors when overwrite is true. very dangerous
-ignore = false
+# try to skip files with errors
+ignore = true
+# force write even if there are errors
+force = false
 # level of logging: -1 = quiet. 0 = overlapping progress report. 1 = streaming
 # progress report. 2 = verbose messages. >2 = everything
 loglevel = 0

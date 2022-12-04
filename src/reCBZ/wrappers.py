@@ -1,9 +1,19 @@
 import time
 from pathlib import Path
 
+from PIL import UnidentifiedImageError
+
 from reCBZ.config import Config
 from reCBZ.archive import Archive
 from reCBZ.util import human_bytes, pct_change, shorten, mylog
+
+
+class AbortedRepackError(IOError):
+    """Pages missing in repacked archive"""
+
+
+class AbortedCompareError(IOError):
+    """Caught PIL.UnidentifiedImageError in Archive.compute_fmt_sizes"""
 
 
 def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
@@ -50,11 +60,15 @@ def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     print(line2)
 
 
-def compare_fmts_archive(fp:str) -> tuple:
+def compare_fmts_archive(fp:str, quiet=False) -> tuple:
     """Run a sample with each image format, return the results"""
-    if Config.loglevel >= 0: print(shorten('[i] Analyzing', fp))
-    results = Archive(fp).compute_fmt_sizes()
-    pprint_fmt_stats(results[0], results[1:])
+    try:
+        results = Archive(fp).compute_fmt_sizes()
+    except UnidentifiedImageError as err:
+        print("[!] Can't calculate size: PIL.UnidentifiedImageError. Aborting")
+        raise AbortedCompareError
+    if not quiet:
+        pprint_fmt_stats(results[0], results[1:])
     return results
 
 
@@ -84,9 +98,9 @@ def repack_archive(fp:str) -> str:
     new_pages = len(book.fetch_pages())
     discarded = source_pages - new_pages
     if discarded > 0:
-        print(f"[!] {discarded} pages couldn't be written")
-        if not Config.ignore_err:
-            print('[!] Aborting')
+        print(f"[!] {discarded} files couldn't be written")
+        if not Config.force_write:
+            print('[!] Aborting (--force not specified)')
             return ''
     if not Config.no_write:
         if Config.overwrite:
@@ -122,7 +136,7 @@ def assist_repack_archive(fp:str) -> str:
             print('[!] Ctrl+C to cancel')
             continue
         except KeyboardInterrupt:
-            print('[!] Aborting')
+            print('[!] Aborting (--force not specified)')
             exit(1)
     Config.img_format = selection
     return repack_archive(fp)
@@ -132,7 +146,7 @@ def auto_repack_archive(fp:str) -> str:
     """Run a sample with each image format, then automatically pick
     the smallest format to repack the rest of the archive with
     Returns path to repacked archive"""
-    results = Archive(fp).compute_fmt_sizes()
+    results = compare_fmts_archive(fp, quiet=True)
     selection = {"desc":results[1][1], "name":results[1][2]}
     fmt_name = selection['name']
     fmt_desc = selection['desc']
@@ -159,8 +173,8 @@ def join_archives(main_path:str, paths:list) -> str:
     new_pages = len(main_book.fetch_pages())
     discarded = source_pages - new_pages
     if discarded > 0:
-        print(f"[!] {discarded} pages couldn't be written")
-        if not Config.ignore_err:
+        print(f"[!] {discarded} files couldn't be written")
+        if not Config.force_write:
             print('[!] Aborting')
             return ''
     if not Config.no_write:

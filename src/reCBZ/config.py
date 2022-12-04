@@ -16,6 +16,7 @@ class Config():
     tempuuid:str = reCBZ.TEMPUUID
     overwrite:bool = _cfg["archive"]["overwrite"]
     ignore_err:bool = _cfg["archive"]["ignore"]
+    force_write:bool = _cfg["archive"]["force"]
     no_write:bool = _cfg["archive"]["nowrite"]
     loglevel:int = _cfg["archive"]["loglevel"]
     no_parallel:bool = _cfg["archive"]["noparallel"]

@@ -64,9 +64,9 @@ def main():
         help="overwrite the original archive")
     parser.add_argument( "-F", "--force",
         default=None,
-        dest="ignore_err",
+        dest="force_write",
         action="store_true",
-        help="ignore file errors when writing pages (dangerous)")
+        help="write archive even if there are page errors (dangerous)")
     log_group.add_argument( "-v", "--verbose",
         default=None,
         dest="loglevel",
@@ -300,11 +300,13 @@ def main():
                 paths = new
 
     # everything passed
+    exit_code = 0
     if reCBZ.SHOWTITLE: print_title()
     try:
         if args.mode == 'join':
             wrappers.join_archives(paths[0], paths[1:])
         for filename in paths:
+            try:
                 if args.mode is None:
                     wrappers.repack_archive(filename)
                 elif args.mode == 'unpack':
@@ -315,11 +317,18 @@ def main():
                     wrappers.assist_repack_archive(filename)
                 elif args.mode == 'auto':
                     wrappers.auto_repack_archive(filename)
+            except (wrappers.AbortedRepackError, wrappers.AbortedCompareError):
+                exit_code = 2
+                continue
     except (KeyboardInterrupt, util.MPrunnerInterrupt):
         print('\nGoooooooooodbye')
         exit(1)
+    except wrappers.AbortedRepackError:
+        exit_code = 2
 
+    return exit_code
 
 if __name__ == '__main__':
-    # catching errors here won't work, presumably because of namespace mangling
-    main()
+    # catching errors here won't always work, presumably because of namespace
+    # mangling
+    exit(main())

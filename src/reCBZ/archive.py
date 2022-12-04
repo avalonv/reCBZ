@@ -229,6 +229,7 @@ class Archive():
         # manually call extract so we don't overwrite _pages cache
         source_pages = self.extract(count=self._fmt_samples)
         nbytes = sum(page.fp.stat().st_size for page in source_pages)
+        mylog(f'reference format: {source_pages[0].name}')
         source_fmt = source_pages[0].fmt
         source_fsize = [nbytes, f'{Archive._SOURCE_NAME} ({source_fmt.desc})',
                         source_fmt.name]
