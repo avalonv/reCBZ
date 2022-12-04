@@ -74,7 +74,7 @@ class KoboNia(Kobo):
 class Kindle68(Kindle):
     nickname = 'PW5'
     desc = 'Kindle Paperwhite (11th gen)'
-    size = (1246, 1648)
+    size = (1236, 1648)
     gray = True
 
 
