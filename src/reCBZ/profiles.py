@@ -1,4 +1,5 @@
 class Kobo:
+    blacklisted_fmts = 'webp webpll'
     prefer_epub = False
     epub_ext = '.kepub.epub'
     epub_properties = (
@@ -12,6 +13,7 @@ class Kobo:
 
 
 class Kindle:
+    blacklisted_fmts = ''
     prefer_epub = True
     epub_ext = '.epub'
     epub_properties = (

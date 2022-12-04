@@ -77,3 +77,4 @@ class Config():
         # if profile.prefer_epub:
         cls.archive_format = 'epub'
         cls.ebook_profile = profile
+        cls.blacklisted_fmts += profile.blacklisted_fmts
