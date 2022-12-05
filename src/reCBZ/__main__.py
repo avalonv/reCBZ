@@ -110,6 +110,8 @@ def main():
         help="append the contents of each file to the first/leftmost file")
     parser.add_argument( "-p", "--profile",
         default=None,
+        # best to handle it externally as we always convert to upper case
+        # choices=([prof.nickname for prof in profiles_list]),
         metavar="",
         dest="profile",
         type=str,
@@ -222,7 +224,7 @@ def main():
         prof_name = args.profile.upper()
         try:
             Config.set_profile(prof_name)
-        except KeyError:
+        except ValueError:
             print(f'{reCBZ.CMDNAME}: profile: invalid option "{prof_name}"')
             exit(1)
 
