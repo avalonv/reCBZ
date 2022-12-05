@@ -62,7 +62,7 @@ def main():
         dest="loglevel",
         action="store_const",
         help="disable progress messages")
-    parser.add_argument( "--nw", "--nowrite",
+    parser.add_argument( "-d", "--dry",
         default=None,
         dest="no_write",
         action="store_true",
@@ -158,13 +158,20 @@ def main():
     mutually_exclusive_groups.append(ext_group)
 
     images_group = parser.add_argument_group(title="image options")
-    images_group.add_argument( "--imgfmt",
+    images_group.add_argument( "-c", "--convert",
         default=None,
         choices=('jpeg', 'png', 'webp', 'webpll'),
         metavar="",
         dest="img_format",
         type=str,
         help="format to convert pages to: jpeg, webp, webpll, or png")
+    images_group.add_argument( "--imgfmt", # deprecated
+        default=None,
+        choices=('jpeg', 'png', 'webp', 'webpll'),
+        metavar="",
+        dest="img_format",
+        type=str,
+        help=argparse.SUPPRESS)
     images_group.add_argument( "--quality",
         default=None,
         choices=(range(1,101)),
@@ -237,6 +244,10 @@ def main():
 
     args, unknown_args = parser.parse_known_args()
 
+    if args.show_version:
+        print(f'{reCBZ.CMDNAME} v{reCBZ.__version__}')
+        exit(0)
+
     # this is admittedly rather dumb, but we're trying to overcome argparse's
     # inability to include options in both groups and mutually_exclusive_groups
     # at the same time
@@ -287,10 +298,6 @@ def main():
         for key, val in Config.__dict__.items():
             if not private.search(str(key)) and not private.search(str(val)):
                 print(f"{key} = {val}")
-        exit(0)
-
-    if args.show_version:
-        print(f'{reCBZ.CMDNAME} v{reCBZ.__version__}')
         exit(0)
 
     if args.show_profiles:

@@ -72,9 +72,9 @@ Merge the contents of all files starting with 'How do We Relationship' into a si
 
     recbz --join 'How do We Relationship'*.cbz
 
-Rescale all .cbz files on the current folder to 1440p, convert pages to grayscale and save as high quality WebP:
+Rescale and convert all .cbz files on the current folder to high quality, black & white WebPs:
 
-    recbz --size 1440x1920 --bw --imgfmt webp --quality 90 *.cbz
+    recbz --size 1440x1920 --bw --convert webp --quality 90 *.cbz
 
 ## Note about WebP
 
