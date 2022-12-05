@@ -3,6 +3,7 @@ import argparse
 import platform
 import zipfile
 import re
+import sys
 
 import reCBZ
 from reCBZ import wrappers, util
@@ -41,23 +42,32 @@ def unix_like_glob(arglist:list) -> list:
 
 def main():
     # o god who art in heaven please guard mine anime girls
+    mutually_exclusive_groups = []
     wiki='https://github.com/avalonv/reCBZ/wiki'
+    desc='''accepted formats: .zip, .epub, .cbz. repacks to .cbz by default'''
     parser = argparse.ArgumentParser(
             prog=reCBZ.CMDNAME,
-            usage="%(prog)s [options] files.cbz",
-            epilog=f"for detailed documentation, see {wiki}")
-    mode_group = parser.add_mutually_exclusive_group()
-    imgfmt_group = parser.add_mutually_exclusive_group()
-    ext_group = parser.add_mutually_exclusive_group()
-    log_group = parser.add_mutually_exclusive_group()
-    process_group = parser.add_mutually_exclusive_group()
-    # TODO clean leftover options
-    parser.add_argument( "-nw", "--nowrite",
+            usage="%(prog)s [options] files",
+            description=desc,
+            epilog=f"for detailed documentation, see {wiki}",)
+
+    parser.add_argument( "-v", "--verbose", # log_group
+        default=None,
+        dest="loglevel",
+        action="count",
+        help="increase verbosity of messages, repeatable: -vv")
+    parser.add_argument( "-s", "--silent", # log_group
+        default=None,
+        const=-1,
+        dest="loglevel",
+        action="store_const",
+        help="disable progress messages")
+    parser.add_argument( "--nw", "--nowrite",
         default=None,
         dest="no_write",
         action="store_true",
         help="dry run, no changes are saved at the end (safe)")
-    ext_group.add_argument( "-O", "--overwrite",
+    parser.add_argument( "-O", "--overwrite",
         default=None,
         dest="overwrite",
         action="store_true",
@@ -67,159 +77,187 @@ def main():
         dest="force_write",
         action="store_true",
         help="write archive even if there are page errors (dangerous)")
-    log_group.add_argument( "-v", "--verbose",
-        default=None,
-        dest="loglevel",
-        action="count",
-        help="increase verbosity of progress messages, repeatable: -vvv")
-    log_group.add_argument( "-s", "--silent",
-        default=None,
-        const=-1,
-        dest="loglevel",
-        action="store_const",
-        help="disable all progress messages")
-    # mode_group.add_argument( "-u", "--unpack",
+    # parser.add_argument( "-u", "--unpack", # mode_group
     #     default=None,
     #     const='unpack',
     #     dest="mode",
     #     action="store_const",
-    #     help="unpack the archive to the currect directory (safe)")
-    mode_group.add_argument( "-c", "--compare",
+    #     help="unpack the archive to the current directory (safe)")
+    parser.add_argument( "--compare", # mode_group
         default=None,
         const='compare',
         dest="mode",
         action="store_const",
         help=argparse.SUPPRESS)
-    mode_group.add_argument( "-a", "--assist",
+    parser.add_argument( "-a", "--assist", # mode_group
         default=None,
         const='assist',
         dest="mode",
         action="store_const",
-        help="calculate size of each image format, then ask which to repack with")
-    mode_group.add_argument( "-A" ,"--auto",
+        help="calculate size for each image format, ask which to use")
+    parser.add_argument( "-A" ,"--auto", # mode_group
         default=None,
         const='auto',
         dest="mode",
         action="store_const",
-        help="calculate size, then automatically pick the best one to repack with")
-    mode_group.add_argument( "-J" ,"--join",
+        help="calculate size for each image format, pick smallest one")
+    parser.add_argument( "-J" ,"--join", # mode_group
         default=None,
         const='join',
         dest="mode",
         action="store_const",
-        help="append the contents of each file to the first/leftmost file")
-    parser.add_argument( "-p", "--profile",
+        help="append the contents of each file to the leftmost file")
+    parser.add_argument( "--noprev",
+        default=False,
+        dest="noprev",
+        action="store_true",
+        help="ignore previously repacked files")
+    log_group = ('verbose', 'silent')
+    mutually_exclusive_groups.append(log_group)
+    mode_group = ('compare', 'assist', 'a', 'auto', 'A', 'join', 'J')
+    mutually_exclusive_groups.append(mode_group)
+
+    archive_group = parser.add_argument_group(title="archive options")
+    archive_group.add_argument( "-p", "--profile",
         default=None,
         # best to handle it externally as we always convert to upper case
         # choices=([prof.nickname for prof in profiles_list]),
         metavar="",
         dest="profile",
         type=str,
-        help="target device profile. run --profiles to see available options")
-    parser.add_argument( "--profiles",
+        help="target eReader profile. run --profiles to see options")
+    archive_group.add_argument( "--profiles",
         default=False,
         dest="show_profiles",
         action='store_true',
         help=argparse.SUPPRESS)
-    ext_group.add_argument( "--epub",
+    archive_group.add_argument( "--epub", # ext_group
         default=None,
         const='epub',
         dest="archive_format",
         action="store_const",
         help="save archive as epub")
-    ext_group.add_argument( "--zip",
+    archive_group.add_argument( "--zip", # ext_group
         default=None,
         const='zip',
         dest="archive_format",
         action="store_const",
         help="save archive as zip")
-    ext_group.add_argument( "--cbz",
+    archive_group.add_argument( "--cbz", # ext_group
         default=None,
         const='cbz',
         dest="archive_format",
         action="store_const",
         help="save archive as cbz")
-    parser.add_argument( "--noprev",
-        default=False,
-        dest="noprev",
-        action="store_true",
-        help="ignore previously repacked files")
-    parser.add_argument( "--compress",
+    archive_group.add_argument( "--compress",
         default=None,
         dest="compress_zip",
         action="store_true",
         help="attempt to further compress the archive when repacking")
-    process_group.add_argument("--process",
-        default=None,
-        choices=(range(1,33)),
-        metavar="1-32",
-        dest="processes",
-        type=int,
-        help="maximum number of processes to spawn")
-    process_group.add_argument( "--sequential",
-        default=None,
-        dest="no_parallel",
-        action="store_true",
-        help="disable multiprocessing")
-    imgfmt_group.add_argument( "--imgfmt",
+    ext_group = ('epub', 'zip', 'cbz')
+    mutually_exclusive_groups.append(ext_group)
+
+    images_group = parser.add_argument_group(title="image options")
+    images_group.add_argument( "--imgfmt",
         default=None,
         choices=('jpeg', 'png', 'webp', 'webpll'),
-        metavar="format",
+        metavar="",
         dest="img_format",
         type=str,
         help="format to convert pages to: jpeg, webp, webpll, or png")
-    parser.add_argument( "--quality",
+    images_group.add_argument( "--quality",
         default=None,
         choices=(range(1,101)),
         metavar="0-95",
         dest="img_quality",
         type=int,
         help="save quality for lossy formats. >90 not recommended")
-    parser.add_argument( "--size",
+    images_group.add_argument( "--size",
         default=None,
         metavar="WidthxHeight",
         dest="size_str",
         type=str,
         help="rescale images to the specified resolution")
-    parser.add_argument( "--noup",
+    images_group.add_argument( "--noup", # rescale_group
         default=None,
         dest="no_upscale",
         action="store_true",
         help="disable upscaling with --size")
-    parser.add_argument( "--nodown",
+    images_group.add_argument( "--nodown", # rescale_group
         default=None,
         dest="no_downscale",
         action="store_true",
         help="disable downscaling with --size")
-    imgfmt_group.add_argument( "--nowebp",
+    images_group.add_argument( "--nowebp",
         default=None,
         const=f'{Config.blacklisted_fmts} webp webpll',
         dest="blacklisted_fmts",
         action="store_const",
         help="exclude webp from --auto and --assist")
-    parser.add_argument( "--bw",
+    images_group.add_argument( "--bw", # color_group
         default=None,
         dest="grayscale",
         action="store_true",
         help="convert images to grayscale")
-    parser.add_argument( "--color",
+    images_group.add_argument( "--color", # color_group
         default=None,
         dest="grayscale",
         action="store_false",
-        help="force color when using --profile")
-    parser.add_argument( "--config",
+        help="preserve color when using --profile")
+    rescale_group = ('noup', 'nodown')
+    color_group = ('bw', 'color')
+    mutually_exclusive_groups.append(rescale_group)
+    mutually_exclusive_groups.append(color_group)
+
+    others_group = parser.add_argument_group(title="other")
+    others_group.add_argument("--process", # process_group
+        default=None,
+        choices=(range(1,33)),
+        metavar="1-32",
+        dest="processes",
+        type=int,
+        help="maximum number of processes to spawn")
+    others_group.add_argument( "--sequential", # process_group
+        default=None,
+        dest="no_parallel",
+        action="store_true",
+        help="disable multiprocessing")
+    others_group.add_argument( "--config",
         default=None,
         dest="show_config",
         action="store_true",
-        help="show current settings and exit")
-    parser.add_argument( "--version",
+        help="show settings and exit")
+    others_group.add_argument( "--version",
         default=None,
         dest="show_version",
         action="store_true",
         help="show version and exit")
+    process_group = ('process', 'sequential')
+    mutually_exclusive_groups.append(process_group)
+
     args, unknown_args = parser.parse_known_args()
 
-    # set profile first, ensure it can be overriden by explicit options
+    # this is admittedly rather dumb, but we're trying to overcome argparse's
+    # inability to include options in both groups and mutually_exclusive_groups
+    # at the same time
+    # more details here: https://github.com/python/cpython/issues/55193
+    bad_args = []
+    for mutex_group in mutually_exclusive_groups:
+        group_matches = []
+        for arg in sys.argv:
+            for mutex_arg in mutex_group:
+                p = re.compile(f'^[-]{{1,2}}{mutex_arg}')
+                if p.match(arg) and arg not in group_matches:
+                    group_matches.append(arg)
+        if len(group_matches) >= 2: # only handle one pair at a time
+            bad_args.append(group_matches[:2])
+
+    if len(bad_args) >= 1:
+        arg1, arg2 = bad_args[0] # only handle one group at a time
+        print(f'{reCBZ.CMDNAME}: error: argument {arg1} not allowed with argument {arg2}')
+        exit(1)
+
+    # set profile first, ensure it can be overridden by explicit options
     if args.profile is not None:
         prof_name = args.profile.upper()
         try:
@@ -301,7 +339,7 @@ def main():
             else:
                 paths = new
 
-    # everything passed
+    # everything passed. do stuff
     exit_code = 0
     if reCBZ.SHOWTITLE: print_title()
     try:
