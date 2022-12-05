@@ -49,11 +49,13 @@ or build from source:
 
     recbz [options] files
 
-Accepts a valid .cbz or .zip file, or a collection of files. With no arguments passed, it will try to repack the file(s) with slightly more compression.
+Accepts a valid .cbz, .epub, or .zip file, or a collection of files. With no arguments passed, it will try to repack the file(s) with slightly more compression.
 
 The output file(s) will always be saved to the current directory as `filename [reCBZ].extension`, unless **--overwrite** is specified.
 
-Use `--help` or see the [Wiki](https://github.com/avalonv/reCBZ/wiki) for a list options and ebook profiles.
+### Config
+
+Use `--help` or see the [Wiki](https://github.com/avalonv/reCBZ/wiki) for a list options and ebook [profiles](https://github.com/avalonv/reCBZ/wiki/Ebook-profiles).
 
 Default values for most options can be modified in `defaults.toml`
 
