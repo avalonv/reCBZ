@@ -101,10 +101,9 @@ class Archive():
     def __init__(self, filename:str):
         mylog('Archive: __init__')
         if Path(filename).exists():
-            self.source_path:Path = Path(filename)
+            self.fp:Path = Path(filename)
         else:
             raise ValueError(f"{filename}: invalid path")
-        self._source_stem = self.source_path.stem
         self.opt_ignore = Config.ignore_err
         self._zip_compress = Config.compress_zip
         self._fmt_blacklist = Config.blacklisted_fmts
@@ -120,6 +119,11 @@ class Archive():
         self._chapter_lengths = []
         self._chapters = []
         self._cachedir:Path = Path('.')
+        self._bad_files = []
+
+    @property
+    def bad_files(self):
+        return self._bad_files
 
     def fetch_pages(self):
         if len(self._index) == 0:
@@ -149,20 +153,20 @@ class Archive():
 
         self._cachedir = Path(tempfile.mkdtemp(prefix=Archive._global_cache_id))
         try:
-            source_zip = ZipFile(self.source_path)
+            source_zip = ZipFile(self.fp)
         except BadZipFile as err:
-            raise ValueError(f"Fatal: '{self.source_path}': not a zip file")
+            raise ValueError(f"Fatal: '{self.fp}': not a zip file")
 
         compressed_files = source_zip.namelist()
         assert len(compressed_files) >= 1, 'no files in archive'
         if count > 0:
             # select x images from the middle of the archive, in increments of 2
             if count * 2 > len(compressed_files):
-                raise ValueError(f"{self.source_path} is smaller than samples * 2")
+                raise ValueError(f"{self.fp} is smaller than samples * 2")
             delta = int(len(compressed_files) / 2)
             compressed_files = compressed_files[delta-count:delta+count:2]
 
-        mylog(f'Extracting: {self.source_path}', progress=True)
+        mylog(f'Extracting: {self.fp}', progress=True)
         for file in compressed_files:
             source_zip.extract(file, self._cachedir)
 
@@ -212,11 +216,10 @@ class Archive():
         source_pages = self.fetch_pages()
         results = map_workers(self._convert_page, source_pages)
         # solves the need to invert files in EPUB. critical for windows, because
-        # files aren't remotely ordered for whatever reason.
-        paths = human_sort([page.fp for page in self._index])
-        self._index = [Page(path) for path in paths]
-        sorted_pages = human_sort([page.fp for page in results if page is not None])
-        self._index = [Page(path) for path in sorted_pages]
+        # files are randomly ordered for whatever reason.
+        sorted_paths = human_sort([item[1].fp for item in results if item[0]])
+        self._bad_files = [item[1].fp for item in results if item[0] is False]
+        self._index = [Page(path) for path in sorted_paths]
         return tuple(self._index)
 
     def compute_fmt_sizes(self) -> tuple:
@@ -228,7 +231,7 @@ class Archive():
             results = map_workers(pfunc, sample_pages)
 
             # pages don't need to be sorted here, as they're discarded
-            converted_pages = [page for page in results if page]
+            converted_pages = [item[1] for item in results if item[0]]
             nbytes = sum(page.fp.stat().st_size for page in converted_pages)
             return nbytes, fmt.desc, fmt.name
 
@@ -266,7 +269,7 @@ class Archive():
             new_path = Path(f'{file_name}.{book_format}')
         else:
             # write to current dir
-            new_path = Path(f'{self._source_stem}.{book_format}')
+            new_path = Path(f'{self.fp.stem}.{book_format}')
         if new_path.exists():
             mylog(f'Write .{book_format}: {new_path}', progress=True)
             mylog(f'{new_path} exists, removing...')
@@ -318,7 +321,7 @@ class Archive():
 
     def _write_epub(self, savepath):
         from reCBZ import epub
-        title = self._source_stem
+        title = self.fp.stem
         mylog(f'Write .epub: {title}.epub', progress=True)
         chapters = self.fetch_chapters()
         if len(chapters) > 1:
@@ -342,8 +345,8 @@ class Archive():
         # page = copy.deepcopy(source)
         page = Page(source.fp) # create a copy
 
+        # ensure file can be opened as image, and that it's a valid format
         try:
-            # ensure file can be opened as image
             mylog(f'Read file: {page.name}', progress=True)
             log_buff = f'/open:  {page.fp}\n'
             source_fmt = page.fmt
@@ -351,17 +354,17 @@ class Archive():
         except (IOError, UnidentifiedImageError) as err:
             if self.opt_ignore:
                 mylog(f"{page.fp}: can't open file as image, ignoring...'")
-                return None
+                return False, page
             else:
                 raise err
         except KeyError as err:
             if self.opt_ignore:
                 mylog(f"{page.fp}: invalid image format, ignoring...'")
-                return None
+                return False, page
             else:
                 raise err
 
-        # determine target format
+        # determine target (new) format
         if format:
             new_fmt = format
         elif self._new_page_format is not None:
@@ -410,7 +413,7 @@ class Archive():
         elapsed = f'{end_t-start_t:.2f}s'
         mylog(f'{log_buff}\\write: {new_fp}: took {elapsed}')
         mylog(f'Save file: {new_fp.name}', progress=True)
-        return page
+        return True, page
 
     @property
     def _new_page_format(self):

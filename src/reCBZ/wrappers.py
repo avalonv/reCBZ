@@ -1,15 +1,17 @@
 import time
+import re
 from pathlib import Path
 
 from PIL import UnidentifiedImageError
 
+import reCBZ
 from reCBZ.config import Config
 from reCBZ.archive import Archive
 from reCBZ.util import human_bytes, pct_change, shorten, mylog
 
 
 class AbortedRepackError(IOError):
-    """Pages missing in repacked archive"""
+    """Some files couldn't be converted and are missing from the archive"""
 
 
 class AbortedCompareError(IOError):
@@ -52,12 +54,42 @@ def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     else:
         verb = 'decrease'
     change = pct_change(source_size, new_size)
-    line1 = f"┌─ {op}: '{name}' completed in {elapsed}"
-    line2 = f"└───■■ Source: {human_bytes(source_size)} ■ New: " +\
+    lines = f"┌─ {op}: '{name}' completed in {elapsed}\n" +\
+            f"└───■■ Source: {human_bytes(source_size)} ■ New: " +\
             f"{human_bytes(new_size)} ■ {change} {verb} ■■"
     mylog('', progress=True)
-    print(line1)
-    print(line2)
+    print(lines)
+
+
+def save(book):
+    global actual_stem
+    bad_files = book.bad_files
+    if len(bad_files) > 0:
+        if re.compile('\\.epub$').match(book.fp.suffix):
+            old_len = len(bad_files)
+            bad_files = [f for f in bad_files if not reCBZ.EPUB_FILES.match(str(f))]
+            filtered = old_len - len(bad_files)
+            if Config.loglevel >= 0:
+                print(f'[i] EPUB: filtered {filtered} files')
+        if not Config.force_write and len(bad_files) > 0:
+            print(f'{book.fp.name}:')
+            [print(f'error: {file.name}') for file in bad_files]
+            print(f"[!] {len(bad_files)} files couldn't be converted")
+            print('[!] Aborting (--force not specified)')
+            print(''.rjust(Config.term_width(), '^'))
+            raise AbortedRepackError
+    if not Config.no_write:
+        if Config.overwrite:
+            name = str(Path.joinpath(book.fp.parents[0], f'{book.fp.stem}'))
+            book.fp.unlink()
+        # elif savedir TODO
+        else:
+            name = str(Path.joinpath(Path.cwd(), f'{book.fp.stem} [reCBZ]'))
+        new_fp = Path(book.write_archive(Config.archive_format, file_name=name))
+    else:
+        new_fp = book.fp
+    book.cleanup()
+    return str(new_fp)
 
 
 def compare_fmts_archive(fp:str, quiet=False) -> tuple:
@@ -87,37 +119,44 @@ def repack_archive(fp:str) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""
     if Config.loglevel >= 0: print(shorten('[i] Repacking', fp))
+    source_fp = Path(fp)
     start_t = time.perf_counter()
-    book = Archive(fp)
+    book = Archive(str(source_fp))
     book.extract()
-    source_pages = len(book.fetch_pages())
-    source_stats = {'name':Path(fp).stem,
-                    'size':Path(fp).stat().st_size,
-                    'type':Path(fp).suffix[1:]}
+    source_stats = {'name':source_fp.stem,
+                    'size':source_fp.stat().st_size,
+                    'type':source_fp.suffix[1:]}
     book.convert_pages() # page attributes are inherited from Config at init
-    new_pages = len(book.fetch_pages())
-    discarded = source_pages - new_pages
-    if discarded > 0:
-        print(f"[!] {discarded} files couldn't be written")
-        if not Config.force_write:
-            print('[!] Aborting (--force not specified)')
-            return ''
-    if not Config.no_write:
-        if Config.overwrite:
-            name = str(Path.joinpath(Path(fp).parents[0], f'{Path(fp).stem}'))
-            Path(fp).unlink()
-        # elif savedir TODO
-        else:
-            name = str(Path.joinpath(Path.cwd(), f'{Path(fp).stem} [reCBZ]'))
-        results = book.write_archive(Config.archive_format, file_name=name)
-    else:
-        results = fp
-    new_stats = {'name':Path(results).stem,
-                 'size':Path(results).stat().st_size,
-                 'type':Path(results).suffix[1:]}
+    new_fp = Path(save(book))
+    new_stats = {'name':new_fp.stem,
+                 'size':new_fp.stat().st_size,
+                 'type':new_fp.suffix[1:]}
     pprint_repack_stats(source_stats, new_stats, start_t)
-    book.cleanup()
-    return results
+    return str(new_fp)
+
+
+def join_archives(main_path:str, paths:list) -> str:
+    """Concatenates the contents of paths to main_path and repacks
+    Returns path to concatenated archive"""
+    if Config.loglevel >= 0: print(shorten('[i] Repacking', main_path))
+    source_fp = Path(main_path)
+    start_t = time.perf_counter()
+    main_book = Archive(main_path)
+    sum_size = sum(Path(file).stat().st_size for file in paths)
+    source_stats = {'name':source_fp.stem,
+                    'size':sum_size,
+                    'type':source_fp.suffix[1:]}
+    for file in paths:
+        book = Archive(file)
+        main_book.add_chapter(book)
+    main_book.convert_pages()
+    new_fp = Path(save(main_book))
+    new_stats = {'name':new_fp.stem,
+                 'size':new_fp.stat().st_size,
+                 'type':new_fp.suffix[1:]}
+    pprint_repack_stats(source_stats, new_stats, start_t)
+    main_book.cleanup()
+    return str(new_fp)
 
 
 def assist_repack_archive(fp:str) -> str:
@@ -136,7 +175,7 @@ def assist_repack_archive(fp:str) -> str:
             print('[!] Ctrl+C to cancel')
             continue
         except KeyboardInterrupt:
-            print('[!] Aborting (--force not specified)')
+            print('[!] Aborting')
             exit(1)
     Config.img_format = selection
     return repack_archive(fp)
@@ -153,43 +192,3 @@ def auto_repack_archive(fp:str) -> str:
     if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
     Config.img_format = fmt_name
     return repack_archive(fp)
-
-
-def join_archives(main_path:str, paths:list) -> str:
-    """Concatenates the contents of paths to main_path and repacks
-    Returns path to concatenated archive"""
-    if Config.loglevel >= 0: print(shorten('[i] Repacking', main_path))
-    start_t = time.perf_counter()
-    main_book = Archive(main_path)
-    sum_size = sum(Path(file).stat().st_size for file in paths)
-    source_stats = {'name':Path(main_path).stem,
-                    'size':sum_size,
-                    'type':Path(main_path).suffix[1:]}
-    for file in paths:
-        book = Archive(file)
-        main_book.add_chapter(book)
-    source_pages = len(main_book.fetch_pages())
-    main_book.convert_pages() # page attributes are inherited from Config at init
-    new_pages = len(main_book.fetch_pages())
-    discarded = source_pages - new_pages
-    if discarded > 0:
-        print(f"[!] {discarded} files couldn't be written")
-        if not Config.force_write:
-            print('[!] Aborting')
-            return ''
-    if not Config.no_write:
-        if Config.overwrite:
-            name = str(Path.joinpath(Path(main_path).parents[0], f'{Path(main_path).stem}'))
-            Path(main_path).unlink()
-        # elif savedir TODO
-        else:
-            name = str(Path.joinpath(Path.cwd(), f'{Path(main_path).stem} [reCBZ]'))
-        results = main_book.write_archive(Config.archive_format, file_name=name)
-    else:
-        results = main_path
-    new_stats = {'name':Path(results).stem,
-                 'size':Path(results).stat().st_size,
-                 'type':Path(results).suffix[1:]}
-    pprint_repack_stats(source_stats, new_stats, start_t)
-    main_book.cleanup()
-    return results
