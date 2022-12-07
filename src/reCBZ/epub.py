@@ -24,6 +24,8 @@ from ebooklib import epub
 from reCBZ.util import mylog
 from reCBZ.config import Config
 
+POP_COVER = True
+
 
 def single_chapter_epub(name:str, pages:list) -> str:
     book = epub.EpubBook()
@@ -39,11 +41,15 @@ def single_chapter_epub(name:str, pages:list) -> str:
     book.set_language('en')
     book.set_identifier(str(uuid4()))
 
-    cover = pages[0]
+    # repacking the same file many times over would lead to additional copies
+    # if we did include it
+    if POP_COVER:
+        cover = pages.pop(0)
+    else:
+        cover = pages[0]
     covert_ops = f'cover{cover.fmt.ext[0]}'
     book.set_cover(covert_ops, open(cover.fp, 'rb').read())
 
-    # one chapter = one page = one image = lotsa bytes
     spine = []
     for page_i, page in enumerate(pages, start=1):
         static_dest = f'static/{page_i}{page.fmt.ext[0]}'
@@ -77,9 +83,17 @@ def single_chapter_epub(name:str, pages:list) -> str:
     book.toc.append(spine[0])
 
     # add navigation files
+    # never ask
+    # a woman
+    # her age
+    # a man
+    # his salary
+    # a programmer
+    # what is a Ncx file
+    # 2009derp.jpeg
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
-    book.spine = ['cover', 'nav', *(page for page in spine)]
+    book.spine = (page for page in spine)
 
     if Config.ebook_profile is not None:
         for prop in Config.ebook_profile.epub_properties:
@@ -105,7 +119,10 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
     book.set_language('en')
     book.set_identifier(str(uuid4()))
 
-    cover = chapters[0][0]
+    if POP_COVER:
+        cover = chapters[0].pop(0)
+    else:
+        cover = chapters[0][0]
     covert_ops = f'cover{cover.fmt.ext[0]}'
     book.set_cover(covert_ops, open(cover.fp, 'rb').read())
 
@@ -147,7 +164,7 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
 
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
-    book.spine = ['cover', 'nav', *(page for page in spine)]
+    book.spine = ['nav', *(page for page in spine)]
 
     if Config.ebook_profile is not None:
         for prop in Config.ebook_profile.epub_properties:

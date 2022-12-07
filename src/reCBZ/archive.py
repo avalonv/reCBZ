@@ -335,9 +335,17 @@ class Archive():
         # TODO not implemented
         pass
 
-    def _create_pages_from_path(self, fp):
-        # TODO make public as add_page, append to self._pages
-        return Page(fp)
+    def add_page(self, fp, index=-1):
+        try:
+            assert Path(fp).exists()
+            Page(fp)
+        except AssertionError:
+            raise ValueError(f"can't open {fp}")
+        # we want the IndexError
+        self._index.insert(index, fp)
+
+    def remove_page(self, index):
+        return self._index.pop(index)
 
     @worker_sigint_CTRL_C
     def _convert_page(self, source:Page, savedir=None, format=None): #-> None | Str:
