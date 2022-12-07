@@ -15,7 +15,7 @@ _cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
 
 class Config():
     # LANCZOS sacrifices performance for optimal upscale quality
-    resamplemethod = Image.Resampling.LANCZOS
+    RESAMPLE_TYPE = Image.Resampling.LANCZOS
     ZIPCOMMENT:str = 'repacked with reCBZ'
 
     overwrite:bool = _cfg["general"]["overwrite"]

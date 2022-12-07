@@ -1,8 +1,11 @@
 import re
+import pathlib
 from uuid import uuid4
 
 __version__ = "0.7.3"
 CMDNAME = 'recbz'
+
+MODULE_PATH = pathlib.Path(__file__).resolve().parent
 
 # whether to print the 'recbz.py' title at the beginning
 SHOWTITLE = True

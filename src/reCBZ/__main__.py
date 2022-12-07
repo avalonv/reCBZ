@@ -1,9 +1,9 @@
-import os
 import argparse
 import platform
 import zipfile
 import re
 import sys
+from pathlib import Path
 
 import reCBZ
 from reCBZ import wrappers, util
@@ -300,10 +300,14 @@ def main():
             setattr(Config, key, val)
 
     if args.show_config:
-        private = re.compile('classmethod|^_')
+        private = re.compile('^[A-Z]|\\<classmethod|^_')
         for key, val in Config.__dict__.items():
-            if not private.search(str(key)) and not private.search(str(val)):
+            if not private.search(f'{key} = {val}'):
                 print(f"{key} = {val}")
+
+        defaults_path = Path.joinpath(reCBZ.MODULE_PATH, 'defaults.toml')
+        print()
+        print(f'configuration: {defaults_path}')
         exit(0)
 
     if args.show_profiles:
@@ -317,9 +321,9 @@ def main():
         unknown_args = unix_like_glob(unknown_args)
     paths = []
     for arg in unknown_args:
-        if os.path.isfile(arg):
+        if Path(arg).is_file():
             paths.append(arg)
-        elif os.path.isdir(arg):
+        elif Path(arg).is_dir():
             print(f'{reCBZ.CMDNAME}: {arg}: is a directory')
             parser.print_usage()
             exit(1)

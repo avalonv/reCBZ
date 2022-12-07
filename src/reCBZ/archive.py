@@ -115,7 +115,7 @@ class Archive():
         self._pages_bw = Config.grayscale
         self._pages_noup = Config.no_upscale
         self._pages_nodown = Config.no_downscale
-        self._pages_filter = Config.resamplemethod
+        self._pages_filter = Config.RESAMPLE_TYPE
         self._index:list = []
         self._chapter_lengths = []
         self._chapters = []
