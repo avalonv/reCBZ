@@ -348,7 +348,7 @@ def main():
 
     # everything passed. do stuff
     exit_code = 0
-    if reCBZ.SHOWTITLE: print_title()
+    if reCBZ.SHOWTITLE and Config.loglevel >= 0: print_title()
     try:
         if args.mode == 'join':
             wrappers.join_archives(paths[0], paths[1:])

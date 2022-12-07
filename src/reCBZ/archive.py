@@ -220,6 +220,7 @@ class Archive():
         sorted_paths = human_sort([item[1].fp for item in results if item[0]])
         self._bad_files = [item[1].fp for item in results if item[0] is False]
         self._index = [Page(path) for path in sorted_paths]
+        mylog('', progress=True)
         return tuple(self._index)
 
     def compute_fmt_sizes(self) -> tuple:

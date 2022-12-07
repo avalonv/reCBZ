@@ -56,11 +56,14 @@ def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     else:
         verb = 'decrease'
     change = pct_change(source_size, new_size)
-    lines = f"┌─ {op}: '{name}' completed in {elapsed}\n" +\
-            f"└───■■ Source: {human_bytes(source_size)} ■ New: " +\
+    line1 = f"┌─ {op}: '{name}' completed in {elapsed}\n"
+    line2 = f"└───■■ Source: {human_bytes(source_size)} ■ New: " +\
             f"{human_bytes(new_size)} ■ {change} {verb} ■■"
+    length = len(line1) if len(line1) > len(line2) else len(line2)
+    splitter = ''.rjust(length, '-')
+    lines = line1 + line2 + '\n' + splitter
     mylog('', progress=True)
-    print(lines)
+    if Config.loglevel >= 0: print(lines)
 
 
 def save(book):
@@ -199,6 +202,5 @@ def auto_repack_archive(fp:str) -> str:
     selection = {"desc":results[1][1], "name":results[1][2]}
     fmt_name = selection['name']
     fmt_desc = selection['desc']
-    if Config.loglevel >= 0: print(shorten(f'[i] Proceeding with', fmt_desc))
     Config.img_format = fmt_name
     return repack_archive(fp)
