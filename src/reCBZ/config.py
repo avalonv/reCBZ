@@ -78,3 +78,7 @@ class Config():
         cls.archive_format = 'epub'
         cls.ebook_profile = profile
         cls.blacklisted_fmts += profile.blacklisted_fmts
+
+preload_profile = _cfg["archive"]["ebookprofile"]
+if preload_profile != '':
+    Config.set_profile(preload_profile.upper())

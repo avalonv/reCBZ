@@ -22,6 +22,8 @@ samplecount = 5
 archiveformat = 'cbz'
 # whether to further compress the zipfile after repacking
 compresszip = false
+# default ereader profile to use, affects several other options
+ebookprofile = ''
 
 [image]
 # default format to convert images to. leave empty to preserve original
