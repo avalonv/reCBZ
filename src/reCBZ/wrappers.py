@@ -9,6 +9,8 @@ from reCBZ.config import Config
 from reCBZ.archive import Archive
 from reCBZ.util import human_bytes, pct_change, shorten, mylog
 
+actual_stem = ''
+
 
 class AbortedRepackError(IOError):
     """Some files couldn't be converted and are missing from the archive"""
@@ -78,13 +80,21 @@ def save(book):
             print('[!] Aborting (--force not specified)')
             print(''.rjust(Config.term_width(), '^'))
             raise AbortedRepackError
+
+    # fix suffix when source has two suffixes (kobo epub)
+    try:
+        actual_stem = reCBZ.KEPUB_EPUB.match(book.fp.name).group(0)
+        # suffix = '.kepub.epub'
+    except AttributeError:
+        actual_stem = book.fp.stem
+        # suffix = book.fp.suffix
     if not Config.no_write:
         if Config.overwrite:
-            name = str(Path.joinpath(book.fp.parents[0], f'{book.fp.stem}'))
+            name = str(Path.joinpath(book.fp.parents[0], actual_stem))
             book.fp.unlink()
         # elif savedir TODO
         else:
-            name = str(Path.joinpath(Path.cwd(), f'{book.fp.stem} [reCBZ]'))
+            name = str(Path.joinpath(Path.cwd(), f'{actual_stem} [reCBZ]'))
         new_fp = Path(book.write_archive(Config.archive_format, file_name=name))
     else:
         new_fp = book.fp
@@ -128,7 +138,7 @@ def repack_archive(fp:str) -> str:
                     'type':source_fp.suffix[1:]}
     book.convert_pages() # page attributes are inherited from Config at init
     new_fp = Path(save(book))
-    new_stats = {'name':new_fp.stem,
+    new_stats = {'name':actual_stem,
                  'size':new_fp.stat().st_size,
                  'type':new_fp.suffix[1:]}
     pprint_repack_stats(source_stats, new_stats, start_t)
@@ -151,7 +161,7 @@ def join_archives(main_path:str, paths:list) -> str:
         main_book.add_chapter(book)
     main_book.convert_pages()
     new_fp = Path(save(main_book))
-    new_stats = {'name':new_fp.stem,
+    new_stats = {'name':actual_stem,
                  'size':new_fp.stat().st_size,
                  'type':new_fp.suffix[1:]}
     pprint_repack_stats(source_stats, new_stats, start_t)
