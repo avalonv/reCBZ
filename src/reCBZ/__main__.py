@@ -154,6 +154,11 @@ def main():
         dest="compress_zip",
         action="store_true",
         help="attempt to further compress the archive when repacking")
+    archive_group.add_argument( "--rtl",
+        default=None,
+        dest="right_to_left",
+        action="store_true",
+        help="sort pages from right to left. only affects epub")
     ext_group = ('epub', 'zip', 'cbz')
     mutually_exclusive_groups.append(ext_group)
 

@@ -27,6 +27,7 @@ class Config():
     samples_count:int = _cfg["general"]["samplecount"]
     archive_format:str = _cfg["archive"]["archiveformat"]
     compress_zip:int = _cfg["archive"]["compresszip"]
+    right_to_left:bool = _cfg["archive"]["righttoleft"]
     img_format:str = _cfg["image"]["imageformat"]
     img_quality:int = _cfg["image"]["quality"]
     img_size:tuple = _cfg["image"]["size"]

@@ -6,10 +6,6 @@ class Kobo:
         (None, 'meta', 'portrait', {'property': 'rendition:spread'}),
         (None, 'meta', 'portrait', {'property': 'rendition:orientation'}),
         (None, 'meta', 'pre-paginated', {'property': 'rendition:layout'}))
-    # epub_properties = '''
-    # <meta property="rendition:spread">portrait</meta>
-    # <meta property="rendition:orientation">portrait</meta>
-    # <meta property="rendition:layout">pre-paginated</meta>'''
 
 
 class Kindle:
@@ -19,23 +15,12 @@ class Kindle:
     epub_properties = (
         (None, 'meta', '', {'name': 'fixed-layout', 'content': 'true'}),
         (None, 'meta', '', {'name': 'book-type', 'content': 'comic'}),
-        (None, 'meta', '', {'name': 'primary-writing-mode', 'content': 'horizontal-lr'}),
         (None, 'meta', '', {'name': 'zero-gutter', 'content': 'true'}),
         (None, 'meta', '', {'name': 'zero-margin', 'content': 'true'}),
         (None, 'meta', '', {'name': 'ke-border-color', 'content': '#FFFFFF'}),
         (None, 'meta', '', {'name': 'ke-border-width', 'content': '0'}),
         (None, 'meta', '', {'name': 'orientation-lock', 'content': 'portrait'}),
         (None, 'meta', '', {'name': 'region-mag', 'content': 'true'}))
-    # epub_properties = '''
-    # <meta name="fixed-layout" content="true"/>
-    # <meta name="book-type" content="comic"/>
-    # <meta name="primary-writing-mode" content="horizontal-lr"/>
-    # <meta name="zero-gutter" content="true"/>
-    # <meta name="zero-margin" content="true"/>
-    # <meta name="ke-border-color" content="#FFFFFF"/>
-    # <meta name="ke-border-width" content="0"/>
-    # <meta name="orientation-lock" content="portrait"/>
-    # <meta name="region-mag" content="true"/>'''
 
 
 class KoboForma(Kobo):

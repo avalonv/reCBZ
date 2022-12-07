@@ -24,6 +24,9 @@ archiveformat = 'cbz'
 compresszip = false
 # default ereader profile to use, affects several other options
 ebookprofile = ''
+# whether to write pages from right to left when using epub. rtl appears to be
+# unsupported on mobi
+righttoleft = false
 
 [image]
 # default format to convert images to. leave empty to preserve original
