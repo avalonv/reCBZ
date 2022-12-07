@@ -10,31 +10,31 @@ from PIL import Image
 from reCBZ.profiles import profiles_list
 import reCBZ
 
+_cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
+
 
 class Config():
-    _cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
-    tempuuid:str = reCBZ.TEMPUUID
-    overwrite:bool = _cfg["archive"]["overwrite"]
-    ignore_err:bool = _cfg["archive"]["ignore"]
-    force_write:bool = _cfg["archive"]["force"]
-    no_write:bool = _cfg["archive"]["nowrite"]
-    loglevel:int = _cfg["archive"]["loglevel"]
-    no_parallel:bool = _cfg["archive"]["noparallel"]
-    processes:int = _cfg["archive"]["processes"]
-    archive_format:str = _cfg["archive"]["archiveformat"]
-    compress_zip:int = _cfg["archive"]["compresszip"]
-    samples_count:int = _cfg["archive"]["samplecount"]
-    blacklisted_fmts:str = _cfg["archive"]["blacklistedfmts"]
-    img_format:str = _cfg["archive"]["imageformat"]
-    img_quality:int = _cfg["archive"]["quality"]
-    img_size:tuple = _cfg["archive"]["size"]
-    no_upscale:bool = _cfg["archive"]["noupscale"]
-    no_downscale:bool = _cfg["archive"]["nodownscale"]
-    grayscale:bool = _cfg["archive"]["grayscale"]
     # LANCZOS sacrifices performance for optimal upscale quality
     resamplemethod = Image.Resampling.LANCZOS
-    ebook_profile = None
     ZIPCOMMENT:str = 'repacked with reCBZ'
+
+    overwrite:bool = _cfg["general"]["overwrite"]
+    ignore_err:bool = _cfg["general"]["ignore"]
+    force_write:bool = _cfg["general"]["force"]
+    no_write:bool = _cfg["general"]["nowrite"]
+    loglevel:int = _cfg["general"]["loglevel"]
+    processes:int = _cfg["general"]["processes"]
+    samples_count:int = _cfg["general"]["samplecount"]
+    archive_format:str = _cfg["archive"]["archiveformat"]
+    compress_zip:int = _cfg["archive"]["compresszip"]
+    img_format:str = _cfg["image"]["imageformat"]
+    img_quality:int = _cfg["image"]["quality"]
+    img_size:tuple = _cfg["image"]["size"]
+    no_upscale:bool = _cfg["image"]["noupscale"]
+    no_downscale:bool = _cfg["image"]["nodownscale"]
+    grayscale:bool = _cfg["image"]["grayscale"]
+    blacklisted_fmts:str = _cfg["image"]["blacklistedfmts"]
+    ebook_profile = None
 
     @classmethod
     def pcount(cls) -> int:
@@ -45,7 +45,7 @@ class Config():
             logical_cores = os.cpu_count()
             try:
                 assert logical_cores is not None
-                if logical_cores > 1:
+                if logical_cores not in range(1,3):
                     logical_cores -= 1 # be kind
                 return logical_cores
             except AssertionError:
@@ -71,7 +71,7 @@ class Config():
         try:
             profile = dic[name]
         except KeyError:
-            raise ValueError(f'Invalid profile {name}')
+            raise ValueError(f"Invalid profile '{name}'")
         cls.grayscale = profile.gray
         cls.img_size = profile.size
         # if profile.prefer_epub:

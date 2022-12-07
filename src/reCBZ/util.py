@@ -105,7 +105,7 @@ def worker_sigint_CTRL_C(func):
 
 def map_workers(func, tasks, multithread=False):
     pcount = min(len(tasks), Config.pcount())
-    if Config.no_parallel:
+    if pcount == 1:
         return map(func, tasks)
     elif multithread:
         # mourn the day they inevitably condense the parallel modules in

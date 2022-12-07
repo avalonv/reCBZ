@@ -9,6 +9,7 @@ from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 
+import reCBZ
 from reCBZ.formats import *
 from reCBZ.config import Config
 from reCBZ.util import mylog, map_workers, worker_sigint_CTRL_C, human_sort
@@ -94,7 +95,7 @@ class Page():
 class Archive():
     _SOURCE_NAME:str = 'Source'
     _CACHE_PREFIX:str = 'reCBZCACHE_'
-    _global_cache_id:str = f'{_CACHE_PREFIX}{Config.tempuuid}_'
+    _global_cache_id:str = f'{_CACHE_PREFIX}{reCBZ.TEMPUUID}_'
     validbookformats:tuple = ('cbz', 'zip', 'epub', 'mobi')
     chapter_prefix:str = 'v' # :) :D C:
 

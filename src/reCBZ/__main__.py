@@ -219,15 +219,16 @@ def main():
     others_group = parser.add_argument_group(title="other")
     others_group.add_argument("--process", # process_group
         default=None,
-        choices=(range(1,33)),
-        metavar="1-32",
+        choices=(range(1,65)),
+        metavar="2-64",
         dest="processes",
         type=int,
         help="maximum number of processes to spawn")
     others_group.add_argument( "--sequential", # process_group
         default=None,
-        dest="no_parallel",
-        action="store_true",
+        const=1,
+        dest="processes",
+        action="store_const",
         help="disable multiprocessing")
     others_group.add_argument( "--config",
         default=None,

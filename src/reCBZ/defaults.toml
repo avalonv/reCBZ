@@ -1,33 +1,29 @@
-# reCBZ.Archive defaults
-[archive]
-# General options
-# ---------------------------------------------------------------------
+# defaults for reCBZ
+[general]
 # whether to overwrite the original archive. dangerous
 overwrite = false
-# try to skip files with errors
+# dry run. archive won't be saved, even if overwrite is used
+nowrite = false
+# try to skip files with read errors
 ignore = true
 # force write even if there are errors
 force = false
 # level of logging: -1 = quiet. 0 = overlapping progress report. 1 = streaming
 # progress report. 2 = verbose messages. >2 = everything
 loglevel = 0
-# whether to disable multiprocessing
-noparallel = false
-# max number of processes to spawn. 0 will use all available CPUs
+# max number of processes to spawn. 0 will use available CPUs - 1.
+# 1 disables multiprocessing
 processes = 0
+# number of images to sample when comparing image formats
+samplecount = 5
+
+[archive]
 # default format to save archives as
 archiveformat = 'cbz'
 # whether to further compress the zipfile after repacking
 compresszip = false
-# number of images to sample when comparing image formats
-samplecount = 5
-# dry run. archive won't be saved, even if overwrite is used
-nowrite = false
-# space separated list of formats to exclude from --compare
-blacklistedfmts = ''
 
-# Options which affect image quality and/or file size:
-# ---------------------------------------------------------------------
+[image]
 # default format to convert images to. leave empty to preserve original
 imageformat = ''
 # compression quality for lossy images
@@ -40,3 +36,5 @@ noupscale = false
 nodownscale = false
 # whether to convert images to grayscale
 grayscale = false
+# space separated list of image formats to always exclude from --compare
+blacklistedfmts = ''
