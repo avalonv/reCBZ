@@ -6,16 +6,166 @@ import shutil
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from functools import partial
 from pathlib import Path
+from itertools import chain
 
 from PIL import Image, UnidentifiedImageError
 
 import reCBZ
-from reCBZ.formats import *
 import reCBZ.config as config
+from reCBZ.formats import *
 from reCBZ.util import mylog, map_workers, worker_sigint_CTRL_C, human_sort
 
 # TODO:
 # include docstrings
+
+VALID_BOOK_FORMATS:tuple = ('cbz', 'zip', 'epub', 'mobi')
+SOURCE_NAME:str = 'Source'
+CACHE_PREFIX:str = 'reCBZCACHE_'
+global_cache_id:str = f'{CACHE_PREFIX}{reCBZ.TEMPUUID}_'
+chapter_prefix:str = 'v' # :) :D C:
+
+
+def write_zip(savepath, chapters):
+    new_zip = ZipFile(savepath,'w')
+    lead_zeroes = len(str(len(chapters)))
+    for i, chapter in enumerate(chapters):
+        for page in chapter:
+            # what we're essentially trying to achieve here is determine a page's
+            # path relative to its *local* cachedir, which varies by class
+            # instance (so they don't mix) but is constant to each process
+            temp = Path(tempfile.gettempdir())
+            proc_cache = temp.glob(f'{global_cache_id}*')
+            local_parent_dir = None
+            for path in proc_cache:
+                if page.fp.is_relative_to(path):
+                    local_parent_dir = path
+            if local_parent_dir is None:
+                raise OSError(f'{page.fp} not in any subpath of process cache')
+
+            dest = ''
+            if len(chapters) > 1: # no parent if there's only one chapter
+                dest += f'{chapter_prefix}{i+1:0{lead_zeroes}d}/'
+            dest += f'{page.fp.relative_to(local_parent_dir)}'
+            dest = Path(dest)
+            if config.compress_zip:
+                new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
+            else:
+                new_zip.write(page.fp, dest, ZIP_STORED)
+    new_zip.comment = str.encode(config.ZIPCOMMENT)
+    new_zip.close()
+    return savepath
+
+
+def write_epub(savepath, chapters):
+    from reCBZ import epub
+    pages = list(chain(*chapters))
+    title = Path(savepath).stem
+    mylog(f'Write .epub: {title}.epub', progress=True)
+    if len(chapters) > 1:
+        savepath = epub.multi_chapter_epub(title, chapters)
+    else:
+        savepath = epub.single_chapter_epub(title, pages)
+
+    # if Config.compress_zip:
+    #     ZipFile(savepath, mode='w', compression=ZIP_DEFLATED, compresslevel=9).write(savepath)
+    return savepath
+
+
+def write_mobi(savepath, chapters):
+    import subprocess
+    try:
+        subprocess.run(["kindlegen", "", "/dev/null"], capture_output=True)
+    except FileNotFoundError:
+        raise OSError("'kindlegen' can't be found. is it installed and in PATH?")
+    pass
+
+
+def get_format_class(name):
+    if name in (None, ''): return None
+    else:
+        try:
+            return FormatDict[name]
+        except KeyError:
+            raise ValueError(f"Invalid format name '{name}'")
+
+
+@worker_sigint_CTRL_C
+def convert_page_worker(source, options, savedir=None):
+    start_t = time.perf_counter()
+    # page = copy.deepcopy(source)
+    page = Page(source.fp) # create a copy
+
+    # ensure file can be opened as image, and that it's a valid format
+    try:
+        mylog(f'Read file: {page.name}', progress=True)
+        log_buff = f'/open:  {page.fp}\n'
+        source_fmt = page.fmt
+        img = page.img
+    except (IOError, UnidentifiedImageError) as err:
+        if config.ignore_page_err:
+            mylog(f"{page.fp}: can't open file as image, ignoring...'")
+            return False, page
+        else:
+            raise err
+    except KeyError as err:
+        if config.ignore_page_err:
+            mylog(f"{page.fp}: invalid image format, ignoring...'")
+            return False, page
+        else:
+            raise err
+
+    # determine target (new) format
+    if options['format']:
+        new_fmt = options['format']
+    else:
+        new_fmt = source_fmt
+    page.fmt = new_fmt
+
+    # apply format specific actions
+    if new_fmt is Jpeg:
+      if not img.mode == 'RGB':
+          log_buff += '|trans: mode RGB\n'
+          img = img.convert('RGB')
+
+    # transform
+    if options['grayscale']:
+        log_buff += '|trans: mode L\n' # me lol
+        img = img.convert('L')
+
+    if all(options['size']):
+        log_buff += f'|trans: resize to {options["size"]}\n'
+        width, height = img.size
+        new_size = options['size']
+        # preserve aspect ratio for landscape images
+        if page.landscape:
+            new_size = new_size[::-1]
+        n_width, n_height = new_size
+        # downscaling
+        if (width > n_width and height > n_height
+            and not options['nodown']):
+            img = img.resize((new_size), config.RESAMPLE_TYPE)
+        # upscaling
+        elif not options['noup']:
+            img = img.resize((new_size), config.RESAMPLE_TYPE)
+
+    LossyFmt.quality = options['quality']
+
+    # save
+    page.img = img
+    ext = page.fmt.ext[0]
+    if savedir:
+        new_fp = Path.joinpath(savedir, f'{page.stem}{ext}')
+    else:
+        new_fp = Path.joinpath(page.fp.parents[0], f'{page.stem}{ext}')
+    log_buff += f'|trans: {source_fmt.name} -> {new_fmt.name}\n'
+    page.save(new_fp)
+
+    end_t = time.perf_counter()
+    elapsed = f'{end_t-start_t:.2f}s'
+    mylog(f'{log_buff}\\write: {new_fp}: took {elapsed}')
+    mylog(f'Save file: {new_fp.name}', progress=True)
+    return True, page
+
 
 class Page():
     def __init__(self, file_name):
@@ -92,29 +242,20 @@ class Page():
         return (self.__class__, (self.fp, ))
 
 
-class Archive():
-    _SOURCE_NAME:str = 'Source'
-    _CACHE_PREFIX:str = 'reCBZCACHE_'
-    _global_cache_id:str = f'{_CACHE_PREFIX}{reCBZ.TEMPUUID}_'
-    validbookformats:tuple = ('cbz', 'zip', 'epub', 'mobi')
-    chapter_prefix:str = 'v' # :) :D C:
-
+class ComicArchive():
     def __init__(self, filename:str):
         mylog('Archive: __init__')
         if Path(filename).exists():
             self.fp:Path = Path(filename)
         else:
             raise ValueError(f"{filename}: invalid path")
-        self.opt_ignore = config.ignore_err
-        self._fmt_blacklist = config.blacklisted_fmts
-        self._fmt_samples = config.samples_count
-        self._pages_format = config.img_format
-        self._pages_quality = config.img_quality
-        self._pages_size = config.img_size
-        self._pages_bw = config.grayscale
-        self._pages_noup = config.no_upscale
-        self._pages_nodown = config.no_downscale
-        self._pages_filter = config.RESAMPLE_TYPE
+        self._page_opt = {}
+        self._page_opt['format'] = get_format_class(config.img_format)
+        self._page_opt['quality'] = config.img_quality
+        self._page_opt['size'] = config.img_size
+        self._page_opt['grayscale'] = config.grayscale
+        self._page_opt['noup'] = config.no_upscale
+        self._page_opt['nodown'] = config.no_downscale
         self._index:list = []
         self._chapter_lengths = []
         self._chapters = []
@@ -144,14 +285,14 @@ class Archive():
     def extract(self, count:int=0, raw:bool=False) -> tuple:
         # check and clean previous cache
         tempdir = Path(tempfile.gettempdir())
-        prev_dirs = tempdir.glob(f'{Archive._CACHE_PREFIX}*')
+        prev_dirs = tempdir.glob(f'{CACHE_PREFIX}*')
         for path in prev_dirs:
             assert path != tempdir # for the love of god
-            if not str(Archive._global_cache_id) in str(path):
-                mylog(f'hex {Archive._global_cache_id} not in {path}, cleaning up')
+            if not str(global_cache_id) in str(path):
+                mylog(f'hex {global_cache_id} not in {path}, cleaning up')
                 shutil.rmtree(path)
 
-        self._cachedir = Path(tempfile.mkdtemp(prefix=Archive._global_cache_id))
+        self._cachedir = Path(tempfile.mkdtemp(prefix=global_cache_id))
         try:
             source_zip = ZipFile(self.fp)
         except BadZipFile as err:
@@ -181,7 +322,7 @@ class Archive():
 
     def add_chapter(self, second_archive, start=None, end=None) -> tuple:
         try:
-            assert isinstance(second_archive, Archive)
+            assert isinstance(second_archive, ComicArchive)
         except AssertionError:
             raise ValueError('second_archive is not an instance of Archive')
 
@@ -208,13 +349,15 @@ class Archive():
 
     def convert_pages(self, fmt=None, quality=None, grayscale=None, size=None) -> tuple:
         # TODO assert values are the right type
-        if fmt is not None: self._pages_format = fmt
-        if quality is not None: self._pages_quality = int(quality)
-        if grayscale is not None: self._pages_bw = bool(grayscale)
-        if size is not None: self._pages_size = size
+        options = dict(self._page_opt)
+        if fmt is not None: options['format'] = get_format_class(fmt)
+        if quality is not None: options['quality'] = int(quality)
+        if grayscale is not None: options['grayscale'] = bool(grayscale)
+        if size is not None: options['size'] = size
 
         source_pages = self.fetch_pages()
-        results = map_workers(self._convert_page, source_pages)
+        worker = partial(convert_page_worker, options=options)
+        results = map_workers(worker, source_pages)
         # solves the need to invert files in EPUB. critical for windows, because
         # files are randomly ordered for whatever reason.
         sorted_paths = human_sort([item[1].fp for item in results if item[0]])
@@ -228,8 +371,10 @@ class Archive():
             fmtdir = Path.joinpath(cachedir, fmt.name)
             Path.mkdir(fmtdir)
 
-            pfunc = partial(self._convert_page, savedir=fmtdir, format=fmt)
-            results = map_workers(pfunc, sample_pages)
+            options = dict(self._page_opt) # ensure it's a copy
+            options['format'] = fmt
+            worker = partial(convert_page_worker, savedir=fmtdir, options=options)
+            results = map_workers(worker, sample_pages)
 
             # pages don't need to be sorted here, as they're discarded
             converted_pages = [item[1] for item in results if item[0]]
@@ -238,18 +383,18 @@ class Archive():
 
         # extract images and compute their original size
         # manually call extract so we don't overwrite _pages cache
-        source_pages = self.extract(count=self._fmt_samples)
+        source_pages = self.extract(count=config.samples_count)
         nbytes = sum(page.fp.stat().st_size for page in source_pages)
         mylog(f'reference format: {source_pages[0].name}')
         source_fmt = source_pages[0].fmt
-        source_fsize = [nbytes, f'{Archive._SOURCE_NAME} ({source_fmt.desc})',
+        source_fsize = [nbytes, f'{SOURCE_NAME} ({source_fmt.desc})',
                         source_fmt.name]
 
         # compute the size of each format after converting.
         # one thread per individual format. n processes per thread
         fmt_fsizes = []
-        pfunc = partial(compute_single_fmt, source_pages, self._cachedir)
-        results = map_workers(pfunc, self._valid_page_formats, multithread=True)
+        worker = partial(compute_single_fmt, source_pages, self._cachedir)
+        results = map_workers(worker, config.allowed_page_formats(), multithread=True)
         fmt_fsizes.extend(results)
 
         # finally, compare
@@ -261,8 +406,9 @@ class Archive():
         return tuple(sorted_fmts)
 
     def write_archive(self, book_format='cbz', file_name:str='') -> str:
-        if book_format not in Archive.validbookformats:
+        if book_format not in VALID_BOOK_FORMATS:
             raise ValueError(f"Invalid format '{book_format}'")
+
         if file_name != '':
             parent = Path(file_name).parents[0]
             if not (parent.exists() and parent.is_dir()):
@@ -278,62 +424,15 @@ class Archive():
 
         new_path = str(new_path)
         if book_format == 'cbz':
-            return self._write_zip(new_path)
+            return write_zip(new_path, self.fetch_chapters())
         elif book_format == 'zip':
-            return self._write_zip(new_path)
+            return write_zip(new_path, self.fetch_chapters())
         elif book_format == 'epub':
-            return self._write_epub(new_path)
+            return write_epub(new_path, self.fetch_chapters())
         elif book_format == 'mobi':
             raise NotImplementedError
         else:
             raise ValueError
-
-    def _write_zip(self, savepath):
-        new_zip = ZipFile(savepath,'w')
-        chapters = self.fetch_chapters()
-        lead_zeroes = len(str(len(chapters)))
-        for i, chapter in enumerate(chapters):
-            for page in chapter:
-                # TODO this loop might be moved to a distinct function in the
-                # future, but essentially what we're trying to achieve is determine
-                # a page's path relative to its *local* cachedir, which varies by
-                # class instance (so they don't mix) but is constant to each process
-                temp = Path(tempfile.gettempdir())
-                proc_cache = temp.glob(f'{Archive._global_cache_id}*')
-                local_parent_dir = None
-                for path in proc_cache:
-                    if page.fp.is_relative_to(path):
-                        local_parent_dir = path
-                if local_parent_dir is None:
-                    raise OSError(f'{page.fp} not in any subpath of process cache')
-
-                dest = ''
-                if len(chapters) > 1: # no parent if there's only one chapter
-                    dest += f'{Archive.chapter_prefix}{i+1:0{lead_zeroes}d}/'
-                dest += f'{page.fp.relative_to(local_parent_dir)}'
-                dest = Path(dest)
-                if config.compress_zip:
-                    new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
-                else:
-                    new_zip.write(page.fp, dest, ZIP_STORED)
-        new_zip.comment = str.encode(config.ZIPCOMMENT)
-        new_zip.close()
-        return savepath
-
-    def _write_epub(self, savepath):
-        from reCBZ import epub
-        title = self.fp.stem
-        mylog(f'Write .epub: {title}.epub', progress=True)
-        chapters = self.fetch_chapters()
-        if len(chapters) > 1:
-            savepath = epub.multi_chapter_epub(title, chapters)
-        else:
-            savepath = epub.single_chapter_epub(title, self.fetch_pages())
-        return savepath
-
-    def _write_mobi(self, savepath):
-        # TODO not implemented
-        pass
 
     def add_page(self, fp, index=-1):
         try:
@@ -347,107 +446,10 @@ class Archive():
     def remove_page(self, index):
         return self._index.pop(index)
 
-    @worker_sigint_CTRL_C
-    def _convert_page(self, source:Page, savedir=None, format=None): #-> None | Str:
-        start_t = time.perf_counter()
-        LossyFmt.quality = self._pages_quality
-        # page = copy.deepcopy(source)
-        page = Page(source.fp) # create a copy
-
-        # ensure file can be opened as image, and that it's a valid format
-        try:
-            mylog(f'Read file: {page.name}', progress=True)
-            log_buff = f'/open:  {page.fp}\n'
-            source_fmt = page.fmt
-            img = page.img
-        except (IOError, UnidentifiedImageError) as err:
-            if self.opt_ignore:
-                mylog(f"{page.fp}: can't open file as image, ignoring...'")
-                return False, page
-            else:
-                raise err
-        except KeyError as err:
-            if self.opt_ignore:
-                mylog(f"{page.fp}: invalid image format, ignoring...'")
-                return False, page
-            else:
-                raise err
-
-        # determine target (new) format
-        if format:
-            new_fmt = format
-        elif self._new_page_format is not None:
-            new_fmt = self._new_page_format
-        else:
-            new_fmt = source_fmt
-        page.fmt = new_fmt
-
-        # apply format specific actions
-        if new_fmt is Jpeg:
-          if not img.mode == 'RGB':
-              log_buff += '|trans: mode RGB\n'
-              img = img.convert('RGB')
-
-        # transform
-        if self._pages_bw:
-            log_buff += '|trans: mode L\n' # me lol
-            img = img.convert('L')
-        if all(self._pages_size):
-            log_buff += f'|trans: resize to {self._pages_size}\n'
-            width, height = img.size
-            new_size = self._pages_size
-            # preserve aspect ratio for landscape images
-            if page.landscape:
-                new_size = new_size[::-1]
-            n_width, n_height = new_size
-            # downscaling
-            if (width > n_width and height > n_height
-                and not self._pages_nodown):
-                img = img.resize((new_size), self._pages_filter)
-            # upscaling
-            elif not self._pages_noup:
-                img = img.resize((new_size), self._pages_filter)
-
-        # save
-        page.img = img
-        ext = page.fmt.ext[0]
-        if savedir:
-            new_fp = Path.joinpath(savedir, f'{page.stem}{ext}')
-        else:
-            new_fp = Path.joinpath(page.fp.parents[0], f'{page.stem}{ext}')
-        log_buff += f'|trans: {source_fmt.name} -> {new_fmt.name}\n'
-        page.save(new_fp)
-
-        end_t = time.perf_counter()
-        elapsed = f'{end_t-start_t:.2f}s'
-        mylog(f'{log_buff}\\write: {new_fp}: took {elapsed}')
-        mylog(f'Save file: {new_fp.name}', progress=True)
-        return True, page
-
-    @property
-    def _new_page_format(self):
-        if self._pages_format in (None, ''): return None
-        elif self._pages_format == 'jpeg': return Jpeg
-        elif self._pages_format == 'png': return Png
-        elif self._pages_format == 'webp': return WebpLossy
-        elif self._pages_format == 'webpll': return WebpLossless
-        else: raise ValueError(f"Invalid format name '{self._pages_format}'")
-
-    @property
-    def _valid_page_formats(self) -> tuple:
-        all_fmts = (Png, Jpeg, WebpLossy, WebpLossless)
-        try:
-            blacklist = self._fmt_blacklist.lower().split(' ')
-        except AttributeError: # blacklist is None
-            return all_fmts
-        valid_fmts = tuple(fmt for fmt in all_fmts if fmt.name not in blacklist)
-        assert len(valid_fmts) >= 1, "valid_formats is 0"
-        return valid_fmts
-
     @classmethod
     def cleanup(cls):
         tempdir = Path(tempfile.gettempdir())
-        prev_dirs = tempdir.glob(f'{Archive._CACHE_PREFIX}*')
+        prev_dirs = tempdir.glob(f'{CACHE_PREFIX}*')
         for path in prev_dirs:
             assert path != tempdir # for the love of god
             mylog(f'cleanup(): {path}]')

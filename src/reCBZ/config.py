@@ -8,7 +8,8 @@ except ModuleNotFoundError:
 from PIL import Image
 
 import reCBZ
-from reCBZ.profiles import profiles_list
+from reCBZ.formats import FormatList
+from reCBZ.profiles import ProfileDict
 
 # LANCZOS sacrifices performance for optimal upscale quality
 RESAMPLE_TYPE = Image.Resampling.LANCZOS
@@ -16,7 +17,7 @@ ZIPCOMMENT:str = 'repacked with reCBZ'
 _cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
 
 overwrite:bool = _cfg["general"]["overwrite"]
-ignore_err:bool = _cfg["general"]["ignore"]
+ignore_page_err:bool = _cfg["general"]["ignore"]
 force_write:bool = _cfg["general"]["force"]
 no_write:bool = _cfg["general"]["nowrite"]
 loglevel:int = _cfg["general"]["loglevel"]
@@ -66,9 +67,8 @@ def term_width() -> int:
 
 def set_profile(name) -> None:
     global blacklisted_fmts, ebook_profile, archive_format, img_size, grayscale
-    dic = {prof.nickname:prof for prof in profiles_list}
     try:
-        profile = dic[name]
+        profile = ProfileDict[name]
     except KeyError:
         raise ValueError(f"Invalid profile '{name}'")
     grayscale = profile.gray
@@ -77,6 +77,16 @@ def set_profile(name) -> None:
     archive_format = 'epub'
     ebook_profile = profile
     blacklisted_fmts += profile.blacklisted_fmts
+
+
+def allowed_page_formats() -> tuple:
+    try:
+        blacklist = blacklisted_fmts.lower().split(' ')
+    except AttributeError: # blacklist is None
+        return FormatList
+    valid_fmts = tuple(fmt for fmt in FormatList if fmt.name not in blacklist)
+    assert len(valid_fmts) >= 1, "valid_formats is 0"
+    return valid_fmts
 
 
 preload_profile = _cfg["archive"]["ebookprofile"]

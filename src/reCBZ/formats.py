@@ -1,10 +1,9 @@
 from PIL import Image
-import reCBZ.config as config
 
 
 class LossyFmt():
     lossless:bool = False
-    quality:int = config.img_quality
+    quality:int = 80
 
 
 class LosslessFmt():
@@ -57,3 +56,7 @@ class Png(LosslessFmt):
     @classmethod
     def save(cls, img:Image.Image, dest):
         img.save(dest, format='PNG', optimize=True, compress_level=9)
+
+
+FormatList = (Jpeg, WebpLossy, WebpLossless, Png)
+FormatDict = {cls.name:cls for cls in FormatList}

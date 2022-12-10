@@ -8,7 +8,7 @@ from pathlib import Path
 import reCBZ
 import reCBZ.config as config
 from reCBZ import wrappers, util
-from reCBZ.profiles import profiles_list
+from reCBZ.profiles import ProfileDict
 
 
 def print_title() -> None:
@@ -312,8 +312,8 @@ def main():
 
     if args.show_profiles:
         print(f'{reCBZ.CMDNAME} -p ...')
-        for prof in profiles_list:
-            print(prof.nickname, '=', prof.desc)
+        for prof_key, prof_class in ProfileDict.items():
+            print(prof_key, '=', prof_class.desc)
         exit(0)
 
     # parse files

@@ -6,7 +6,7 @@ from PIL import UnidentifiedImageError
 
 import reCBZ
 import reCBZ.config as config
-from reCBZ.archive import Archive
+from reCBZ.archive import ComicArchive
 from reCBZ.util import human_bytes, pct_change, shorten, mylog
 
 actual_stem = ''
@@ -108,7 +108,7 @@ def save(book):
 def compare_fmts_archive(fp:str, quiet=False) -> tuple:
     """Run a sample with each image format, return the results"""
     try:
-        results = Archive(fp).compute_fmt_sizes()
+        results = ComicArchive(fp).compute_fmt_sizes()
     except UnidentifiedImageError as err:
         print("[!] Can't calculate size: PIL.UnidentifiedImageError. Aborting")
         raise AbortedCompareError
@@ -122,7 +122,7 @@ def unpack_archive(fp:str) -> None:
     """Unpack the archive, converting all images within
     Returns path to repacked archive"""
     if config.loglevel >= 0: print(shorten('[i] Unpacking', fp))
-    unpacked = Archive(fp).extract()
+    unpacked = ComicArchive(fp).extract()
     for file in unpacked:
         print(file)
     exit(1)
@@ -134,7 +134,7 @@ def repack_archive(fp:str) -> str:
     if config.loglevel >= 0: print(shorten('[i] Repacking', fp))
     source_fp = Path(fp)
     start_t = time.perf_counter()
-    book = Archive(str(source_fp))
+    book = ComicArchive(str(source_fp))
     book.extract()
     source_stats = {'name':source_fp.stem,
                     'size':source_fp.stat().st_size,
@@ -154,13 +154,13 @@ def join_archives(main_path:str, paths:list) -> str:
     if config.loglevel >= 0: print(shorten('[i] Repacking', main_path))
     source_fp = Path(main_path)
     start_t = time.perf_counter()
-    main_book = Archive(main_path)
+    main_book = ComicArchive(main_path)
     sum_size = sum(Path(file).stat().st_size for file in paths)
     source_stats = {'name':source_fp.stem,
                     'size':sum_size,
                     'type':source_fp.suffix[1:]}
     for file in paths:
-        book = Archive(file)
+        book = ComicArchive(file)
         main_book.add_chapter(book)
     main_book.convert_pages()
     new_fp = Path(save(main_book))
