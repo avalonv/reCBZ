@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import UnidentifiedImageError
 
 import reCBZ
-from reCBZ.config import Config
+import reCBZ.config as config
 from reCBZ.archive import Archive
 from reCBZ.util import human_bytes, pct_change, shorten, mylog
 
@@ -21,7 +21,7 @@ class AbortedCompareError(IOError):
 
 
 def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
-    lines = f'┌─ Disk size ({Config.samples_count}' + \
+    lines = f'┌─ Disk size ({config.samples_count}' + \
              ' pages) with present settings:\n'
     # justify to the left and right respectively. effectively the same
     # as using f'{part1: <25} | {part2: >8}\n'
@@ -44,7 +44,7 @@ def pprint_fmt_stats(base:tuple, totals:tuple) -> None:
 def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     end_t = time.perf_counter()
     elapsed = f'{end_t - start_t:.2f}s'
-    max_width = Config.term_width()
+    max_width = config.term_width()
     new_size = new['size']
     source_size = source['size']
     name = new['name']
@@ -63,7 +63,7 @@ def pprint_repack_stats(source:dict, new:dict, start_t:float) -> None:
     splitter = ''.rjust(length, '-')
     lines = line1 + line2 + '\n' + splitter
     mylog('', progress=True)
-    if Config.loglevel >= 0: print(lines)
+    if config.loglevel >= 0: print(lines)
 
 
 def save(book):
@@ -74,14 +74,14 @@ def save(book):
             old_len = len(bad_files)
             bad_files = [f for f in bad_files if not reCBZ.EPUB_FILES.match(str(f))]
             filtered = old_len - len(bad_files)
-            if Config.loglevel >= 0:
+            if config.loglevel >= 0:
                 print(f'[i] EPUB: filtered {filtered} files')
-        if not Config.force_write and len(bad_files) > 0:
+        if not config.force_write and len(bad_files) > 0:
             print(f'{book.fp.name}:')
             [print(f'error: {file.name}') for file in bad_files]
             print(f"[!] {len(bad_files)} files couldn't be converted")
             print('[!] Aborting (--force not specified)')
-            print(''.rjust(Config.term_width(), '^'))
+            print(''.rjust(config.term_width(), '^'))
             raise AbortedRepackError
 
     # fix suffix when source has two suffixes (kobo epub)
@@ -91,14 +91,14 @@ def save(book):
     except AttributeError:
         actual_stem = book.fp.stem
         # suffix = book.fp.suffix
-    if not Config.no_write:
-        if Config.overwrite:
+    if not config.no_write:
+        if config.overwrite:
             name = str(Path.joinpath(book.fp.parents[0], actual_stem))
             book.fp.unlink()
         # elif savedir TODO
         else:
             name = str(Path.joinpath(Path.cwd(), f'{actual_stem} [reCBZ]'))
-        new_fp = Path(book.write_archive(Config.archive_format, file_name=name))
+        new_fp = Path(book.write_archive(config.archive_format, file_name=name))
     else:
         new_fp = book.fp
     book.cleanup()
@@ -121,7 +121,7 @@ def unpack_archive(fp:str) -> None:
     # not implemented yet
     """Unpack the archive, converting all images within
     Returns path to repacked archive"""
-    if Config.loglevel >= 0: print(shorten('[i] Unpacking', fp))
+    if config.loglevel >= 0: print(shorten('[i] Unpacking', fp))
     unpacked = Archive(fp).extract()
     for file in unpacked:
         print(file)
@@ -131,7 +131,7 @@ def unpack_archive(fp:str) -> None:
 def repack_archive(fp:str) -> str:
     """Repack the archive, converting all images within
     Returns path to repacked archive"""
-    if Config.loglevel >= 0: print(shorten('[i] Repacking', fp))
+    if config.loglevel >= 0: print(shorten('[i] Repacking', fp))
     source_fp = Path(fp)
     start_t = time.perf_counter()
     book = Archive(str(source_fp))
@@ -141,7 +141,7 @@ def repack_archive(fp:str) -> str:
                     'type':source_fp.suffix[1:]}
     book.convert_pages() # page attributes are inherited from Config at init
     new_fp = Path(save(book))
-    new_stats = {'name':actual_stem,
+    new_stats = {'name':new_fp.name,
                  'size':new_fp.stat().st_size,
                  'type':new_fp.suffix[1:]}
     pprint_repack_stats(source_stats, new_stats, start_t)
@@ -151,7 +151,7 @@ def repack_archive(fp:str) -> str:
 def join_archives(main_path:str, paths:list) -> str:
     """Concatenates the contents of paths to main_path and repacks
     Returns path to concatenated archive"""
-    if Config.loglevel >= 0: print(shorten('[i] Repacking', main_path))
+    if config.loglevel >= 0: print(shorten('[i] Repacking', main_path))
     source_fp = Path(main_path)
     start_t = time.perf_counter()
     main_book = Archive(main_path)
@@ -164,7 +164,7 @@ def join_archives(main_path:str, paths:list) -> str:
         main_book.add_chapter(book)
     main_book.convert_pages()
     new_fp = Path(save(main_book))
-    new_stats = {'name':actual_stem,
+    new_stats = {'name':new_fp.name,
                  'size':new_fp.stat().st_size,
                  'type':new_fp.suffix[1:]}
     pprint_repack_stats(source_stats, new_stats, start_t)
@@ -190,7 +190,7 @@ def assist_repack_archive(fp:str) -> str:
         except KeyboardInterrupt:
             print('[!] Aborting')
             exit(1)
-    Config.img_format = selection
+    config.img_format = selection
     return repack_archive(fp)
 
 
@@ -202,5 +202,5 @@ def auto_repack_archive(fp:str) -> str:
     selection = {"desc":results[1][1], "name":results[1][2]}
     fmt_name = selection['name']
     fmt_desc = selection['desc']
-    Config.img_format = fmt_name
+    config.img_format = fmt_name
     return repack_archive(fp)

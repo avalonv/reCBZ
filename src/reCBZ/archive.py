@@ -11,7 +11,7 @@ from PIL import Image, UnidentifiedImageError
 
 import reCBZ
 from reCBZ.formats import *
-from reCBZ.config import Config
+import reCBZ.config as config
 from reCBZ.util import mylog, map_workers, worker_sigint_CTRL_C, human_sort
 
 # TODO:
@@ -105,17 +105,16 @@ class Archive():
             self.fp:Path = Path(filename)
         else:
             raise ValueError(f"{filename}: invalid path")
-        self.opt_ignore = Config.ignore_err
-        self._zip_compress = Config.compress_zip
-        self._fmt_blacklist = Config.blacklisted_fmts
-        self._fmt_samples = Config.samples_count
-        self._pages_format = Config.img_format
-        self._pages_quality = Config.img_quality
-        self._pages_size = Config.img_size
-        self._pages_bw = Config.grayscale
-        self._pages_noup = Config.no_upscale
-        self._pages_nodown = Config.no_downscale
-        self._pages_filter = Config.RESAMPLE_TYPE
+        self.opt_ignore = config.ignore_err
+        self._fmt_blacklist = config.blacklisted_fmts
+        self._fmt_samples = config.samples_count
+        self._pages_format = config.img_format
+        self._pages_quality = config.img_quality
+        self._pages_size = config.img_size
+        self._pages_bw = config.grayscale
+        self._pages_noup = config.no_upscale
+        self._pages_nodown = config.no_downscale
+        self._pages_filter = config.RESAMPLE_TYPE
         self._index:list = []
         self._chapter_lengths = []
         self._chapters = []
@@ -313,11 +312,11 @@ class Archive():
                     dest += f'{Archive.chapter_prefix}{i+1:0{lead_zeroes}d}/'
                 dest += f'{page.fp.relative_to(local_parent_dir)}'
                 dest = Path(dest)
-                if self._zip_compress:
+                if config.compress_zip:
                     new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
                 else:
                     new_zip.write(page.fp, dest, ZIP_STORED)
-        new_zip.comment = str.encode(Config.ZIPCOMMENT)
+        new_zip.comment = str.encode(config.ZIPCOMMENT)
         new_zip.close()
         return savepath
 

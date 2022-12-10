@@ -22,7 +22,7 @@ from uuid import uuid4
 from ebooklib import epub
 
 from reCBZ.util import mylog
-from reCBZ.config import Config
+import reCBZ.config as config
 
 POP_COVER = True
 
@@ -54,11 +54,11 @@ def single_chapter_epub(name:str, pages:list) -> str:
     for page_i, page in enumerate(pages, start=1):
         static_dest = f'static/{page_i}{page.fmt.ext[0]}'
         mime_type = page.fmt.mime
-        if Config.ebook_profile is not None:
+        if config.ebook_profile is not None:
             if page.landscape:
-                height, width = Config.ebook_profile.size
+                height, width = config.ebook_profile.size
             else:
-                width, height = Config.ebook_profile.size
+                width, height = config.ebook_profile.size
         else:
             width, height = page.size
         size_str = f'width={width} height={height}'
@@ -95,7 +95,7 @@ def single_chapter_epub(name:str, pages:list) -> str:
     book.add_item(epub.EpubNav())
     book.spine = (page for page in spine)
 
-    if Config.right_to_left is True:
+    if config.right_to_left is True:
         book.set_direction('rtl')
         # formerly necessary. turns out it's not an issue if you don't set lr in
         # the first place
@@ -103,10 +103,10 @@ def single_chapter_epub(name:str, pages:list) -> str:
         #     book.add_metadata(None, 'meta', '', {'name': 'primary-writing-mode',
         #                                          'content': 'horizontal-rl'}),
 
-    if Config.ebook_profile is not None:
-        for tag in Config.ebook_profile.epub_properties:
+    if config.ebook_profile is not None:
+        for tag in config.ebook_profile.epub_properties:
             book.add_metadata(*tag)
-        source_fp = f'{name}{Config.ebook_profile.epub_ext}'
+        source_fp = f'{name}{config.ebook_profile.epub_ext}'
     else:
         source_fp = f'{name}.epub'
 
@@ -142,11 +142,11 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
             chapter_name = f'Ch {chapter_i:0{lead_zeroes}d}'
             static_dest = f'static/{chapter_name}/{page_i}{page.fmt.ext[0]}'
             mime_type = page.fmt.mime
-            if Config.ebook_profile is not None:
+            if config.ebook_profile is not None:
                 if page.landscape:
-                    height, width = Config.ebook_profile.size
+                    height, width = config.ebook_profile.size
                 else:
-                    width, height = Config.ebook_profile.size
+                    width, height = config.ebook_profile.size
             else:
                 width, height = page.size
             size_str = f'width={width} height={height}'
@@ -174,13 +174,13 @@ def multi_chapter_epub(name:str, chapters:list) -> str:
     book.add_item(epub.EpubNav())
     book.spine = ['nav', *(page for page in spine)]
 
-    if Config.right_to_left is True:
+    if config.right_to_left is True:
         book.set_direction('rtl')
 
-    if Config.ebook_profile is not None:
-        for tag in Config.ebook_profile.epub_properties:
+    if config.ebook_profile is not None:
+        for tag in config.ebook_profile.epub_properties:
             book.add_metadata(*tag)
-        source_fp = f'{name}{Config.ebook_profile.epub_ext}'
+        source_fp = f'{name}{config.ebook_profile.epub_ext}'
     else:
         source_fp = f'{name}.epub'
 

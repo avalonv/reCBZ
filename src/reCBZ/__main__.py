@@ -6,15 +6,15 @@ import sys
 from pathlib import Path
 
 import reCBZ
+import reCBZ.config as config
 from reCBZ import wrappers, util
-from reCBZ.config import Config
 from reCBZ.profiles import profiles_list
 
 
 def print_title() -> None:
-    align = int(Config.term_width() / 2) - 11
+    align = int(config.term_width() / 2) - 11
     if align > 21: align = 21
-    if align + 22 > Config.term_width() or align < 0:
+    if align + 22 > config.term_width() or align < 0:
         align = 0
     align = align * ' '
     title_multiline = (f"{align}┬─┐┌─┐┌─┐┌┐ ┌─┐ ┌─┐┬ ┬\n"
@@ -202,7 +202,7 @@ def main():
         help="disable downscaling with --size")
     images_group.add_argument( "--nowebp",
         default=None,
-        const=f'{Config.blacklisted_fmts} webp webpll',
+        const=f'{config.blacklisted_fmts} webp webpll',
         dest="blacklisted_fmts",
         action="store_const",
         help="exclude webp from --auto and --assist")
@@ -278,7 +278,7 @@ def main():
     if args.profile is not None:
         prof_name = args.profile.upper()
         try:
-            Config.set_profile(prof_name)
+            config.set_profile(prof_name)
         except ValueError:
             print(f'{reCBZ.CMDNAME}: profile: invalid option "{prof_name}"')
             exit(1)
@@ -288,7 +288,7 @@ def main():
         try:
             newsize = tuple(map(int,newsize.split('x')))
             assert len(newsize) == 2
-            Config.img_size = newsize
+            config.img_size = newsize
         except (ValueError, AssertionError):
             print(f'{reCBZ.CMDNAME}: size: invalid option "{args.size_str}"')
             exit(1)
@@ -296,12 +296,12 @@ def main():
     # this is probably not the most pythonic way to do this
     # I'm sorry guido-san...
     for key, val in args.__dict__.items():
-        if key in Config.__dict__.keys() and val is not None:
-            setattr(Config, key, val)
+        if key in config.__dict__.keys() and val is not None:
+            setattr(config, key, val)
 
     if args.show_config:
         private = re.compile('^[A-Z]|\\<classmethod|^_')
-        for key, val in Config.__dict__.items():
+        for key, val in config.__dict__.items():
             if not private.search(f'{key} = {val}'):
                 print(f"{key} = {val}")
 
@@ -346,7 +346,7 @@ def main():
         new = []
         for filename in paths:
             comment = zipfile.ZipFile(filename).comment
-            if not comment == str.encode(Config.ZIPCOMMENT):
+            if not comment == str.encode(config.ZIPCOMMENT):
                 new.append(filename)
         diff = len(paths) - len(new)
         if diff > 0:
@@ -358,7 +358,7 @@ def main():
 
     # everything passed. do stuff
     exit_code = 0
-    if reCBZ.SHOWTITLE and Config.loglevel >= 0: print_title()
+    if reCBZ.SHOWTITLE and config.loglevel >= 0: print_title()
     try:
         if args.mode == 'join':
             wrappers.join_archives(paths[0], paths[1:])

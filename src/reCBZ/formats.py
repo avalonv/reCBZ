@@ -1,10 +1,10 @@
 from PIL import Image
-from reCBZ.config import Config
+import reCBZ.config as config
 
 
 class LossyFmt():
     lossless:bool = False
-    quality:int = Config.img_quality
+    quality:int = config.img_quality
 
 
 class LosslessFmt():

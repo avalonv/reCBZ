@@ -6,33 +6,33 @@ from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 from functools import wraps
 
-from reCBZ.config import Config
+import reCBZ.config as config
 
 
 class MPrunnerInterrupt(KeyboardInterrupt):
     """KeyboardInterrupt gracefully caught in MP_runner, please catch me"""
 
 
-def shorten(*args, width=Config.term_width()) -> str:
+def shorten(*args, width=config.term_width()) -> str:
     text = ' '.join(args)
     return textwrap.shorten(text, width=width, placeholder='...')
 
 
 def mylog(msg:str, progress=False) -> None:
-    if Config.loglevel == -1:
+    if config.loglevel == -1:
         return
-    elif Config.loglevel > 2:
+    elif config.loglevel > 2:
         print(msg, flush=True)
-    elif Config.loglevel == 2 and not progress:
+    elif config.loglevel == 2 and not progress:
         print(msg, flush=True)
-    elif Config.loglevel == 1 and progress:
+    elif config.loglevel == 1 and progress:
         msg = '[*] ' + msg
         msg = shorten(msg)
         print(msg, end='\n', flush=True)
-    elif Config.loglevel == 0 and progress:
+    elif config.loglevel == 0 and progress:
         # no newline (i.e. overwrite line)
         # flush last first
-        print('[*]'.ljust(Config.term_width()), end='\r')
+        print('[*]'.ljust(config.term_width()), end='\r')
         msg = '[*] ' + msg
         msg = shorten(msg)
         print(msg, end='\r', flush=True)
@@ -104,7 +104,7 @@ def worker_sigint_CTRL_C(func):
 
 
 def map_workers(func, tasks, multithread=False):
-    pcount = min(len(tasks), Config.pcount())
+    pcount = min(len(tasks), config.pcount())
     if pcount == 1:
         return map(func, tasks)
     elif multithread:
