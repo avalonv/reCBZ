@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import re
 import time
-import tempfile
 import shutil
+import tempfile
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from functools import partial
 from pathlib import Path
@@ -20,8 +21,6 @@ from reCBZ.util import mylog, map_workers, worker_sigint_CTRL_C, human_sort
 
 VALID_BOOK_FORMATS:tuple = ('cbz', 'zip', 'epub', 'mobi')
 SOURCE_NAME:str = 'Source'
-CACHE_PREFIX:str = 'reCBZCACHE_'
-global_cache_id:str = f'{CACHE_PREFIX}{reCBZ.TEMPUUID}_'
 chapter_prefix:str = 'v' # :) :D C:
 
 
@@ -30,23 +29,12 @@ def write_zip(savepath, chapters):
     lead_zeroes = len(str(len(chapters)))
     for i, chapter in enumerate(chapters):
         for page in chapter:
-            # what we're essentially trying to achieve here is determine a page's
-            # path relative to its *local* cachedir, which varies by class
-            # instance (so they don't mix) but is constant to each process
-            temp = Path(tempfile.gettempdir())
-            proc_cache = temp.glob(f'{global_cache_id}*')
-            local_parent_dir = None
-            for path in proc_cache:
-                if page.fp.is_relative_to(path):
-                    local_parent_dir = path
-            if local_parent_dir is None:
-                raise OSError(f'{page.fp} not in any subpath of process cache')
 
-            dest = ''
             if len(chapters) > 1: # no parent if there's only one chapter
-                dest += f'{chapter_prefix}{i+1:0{lead_zeroes}d}/'
-            dest += f'{page.fp.relative_to(local_parent_dir)}'
-            dest = Path(dest)
+                dest = Path(f'{chapter_prefix}{i+1:0{lead_zeroes}d}') / page.rel_path
+            else:
+                dest = Path(page.rel_path)
+            mylog(f"ZIP: write '{page.name}' to {dest}")
             if config.compress_zip:
                 new_zip.write(page.fp, dest, ZIP_DEFLATED, 9)
             else:
@@ -170,9 +158,16 @@ def convert_page_worker(source, options, savedir=None):
 class Page():
     def __init__(self, file_name):
         self.fp = Path(file_name)
+        # i tried for hours but windows can't correctly pickle the
+        # GLOBAL_CACHEDIR, it's not thread safe for whatever reason. some
+        # instances will init with a new UUID which can't be compared.
+        # this is the least hacky way I could come up with to keep Unix parity
+        uuid_part = [part for part in self.fp.parts if reCBZ.CACHE_PREFIX in part]
+        global_cache = Path(tempfile.gettempdir()) / uuid_part[0]
+        local_cache = global_cache / self.fp.relative_to(global_cache).parts[0]
+        self.rel_path = self.fp.relative_to(local_cache)
         self.name = str(self.fp.name)
         self.stem = str(self.fp.stem)
-        self._source_fp = self.fp
         self._img:Image.Image
         self._fmt = None
         self._closed = True
@@ -259,8 +254,8 @@ class ComicArchive():
         self._index:list = []
         self._chapter_lengths = []
         self._chapters = []
-        self._cachedir:Path = Path('.')
         self._bad_files = []
+        self._cachedir = Path(tempfile.mkdtemp(prefix='book_', dir=reCBZ.GLOBAL_CACHEDIR))
 
     @property
     def bad_files(self):
@@ -283,16 +278,6 @@ class ComicArchive():
         return chapters
 
     def extract(self, count:int=0, raw:bool=False) -> tuple:
-        # check and clean previous cache
-        tempdir = Path(tempfile.gettempdir())
-        prev_dirs = tempdir.glob(f'{CACHE_PREFIX}*')
-        for path in prev_dirs:
-            assert path != tempdir # for the love of god
-            if not str(global_cache_id) in str(path):
-                mylog(f'hex {global_cache_id} not in {path}, cleaning up')
-                shutil.rmtree(path)
-
-        self._cachedir = Path(tempfile.mkdtemp(prefix=global_cache_id))
         try:
             source_zip = ZipFile(self.fp)
         except BadZipFile as err:
@@ -313,6 +298,9 @@ class ComicArchive():
 
         # god bless you Georgy https://stackoverflow.com/a/50927977/
         raw_paths = tuple(filter(Path.is_file, Path(self._cachedir).rglob('*')))
+        # solves the need to invert files in EPUB, where the destination can't
+        # be inferred from the original filepath. critical, because files are
+        # randomly ordered on Windows (probably due to the ZLIB implementation)
         sorted_paths = tuple(human_sort(raw_paths))
         sorted_pages = tuple(Page(path) for path in sorted_paths)
 
@@ -355,14 +343,11 @@ class ComicArchive():
         if grayscale is not None: options['grayscale'] = bool(grayscale)
         if size is not None: options['size'] = size
 
-        source_pages = self.fetch_pages()
         worker = partial(convert_page_worker, options=options)
-        results = map_workers(worker, source_pages)
-        # solves the need to invert files in EPUB. critical for windows, because
-        # files are randomly ordered for whatever reason.
-        sorted_paths = human_sort([item[1].fp for item in results if item[0]])
+        results = map_workers(worker, self.fetch_pages())
+
         self._bad_files = [item[1].fp for item in results if item[0] is False]
-        self._index = [Page(path) for path in sorted_paths]
+        self._index = [item[1] for item in results if item[0]]
         mylog('', progress=True)
         return tuple(self._index)
 
@@ -448,12 +433,10 @@ class ComicArchive():
 
     @classmethod
     def cleanup(cls):
-        tempdir = Path(tempfile.gettempdir())
-        prev_dirs = tempdir.glob(f'{CACHE_PREFIX}*')
-        for path in prev_dirs:
-            assert path != tempdir # for the love of god
-            mylog(f'cleanup(): {path}]')
+        g_cache = reCBZ.GLOBAL_CACHEDIR
+        if g_cache.exists():
+            mylog(f'cleanup(): {g_cache}]')
             try:
-                shutil.rmtree(path)
+                shutil.rmtree(g_cache)
             except PermissionError:
-                mylog(f"PermissionError, couldn't clean {path}")
+                mylog(f"PermissionError, couldn't clean {g_cache}")
