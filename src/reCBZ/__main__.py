@@ -300,14 +300,15 @@ def main():
             setattr(config, key, val)
 
     if args.show_config:
-        private = re.compile('^[A-Z]|\\<classmethod|^_')
-        for key, val in config.__dict__.items():
-            if not private.search(f'{key} = {val}'):
-                print(f"{key} = {val}")
-
+        for section in config._cfg.items():
+            print(f'\n{section[0].upper()}:')
+            for key, val in section[1].items():
+                modified = config.__dict__[key]
+                print(f"{key} =".ljust(18),
+                      f"'{modified}'".ljust(8),
+                      f"(default '{val}')")
         defaults_path = Path.joinpath(reCBZ.MODULE_PATH, 'defaults.toml')
-        print()
-        print(f'configuration: {defaults_path}')
+        print(f'\nConfig location: {defaults_path}')
         exit(0)
 
     if args.show_profiles:

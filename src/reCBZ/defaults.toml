@@ -3,11 +3,11 @@
 # whether to overwrite the original archive. dangerous
 overwrite = false
 # dry run. archive won't be saved, even if overwrite is used
-nowrite = false
+no_write = false
 # try to skip files with read errors
-ignore = true
+ignore_page_err = true
 # force write even if there are errors
-force = false
+force_write = false
 # level of logging: -1 = quiet. 0 = overlapping progress report. 1 = streaming
 # progress report. 2 = verbose messages. >2 = everything
 loglevel = 0
@@ -15,31 +15,31 @@ loglevel = 0
 # 1 disables multiprocessing
 processes = 0
 # number of images to sample when comparing image formats
-samplecount = 5
+samples_count = 5
 
 [archive]
 # default format to save archives as
-archiveformat = 'cbz'
+archive_format = 'cbz'
 # whether to further compress the zipfile after repacking
-compresszip = false
+compress_zip = false
 # default ereader profile to use, affects several other options
-ebookprofile = ''
+ebook_profile = ''
 # whether to write pages from right to left when using epub. rtl appears to be
 # unsupported on mobi
-righttoleft = false
+right_to_left = false
 
 [image]
 # default format to convert images to. leave empty to preserve original
-imageformat = ''
+img_format = ''
 # compression quality for lossy images
-quality = 80
+img_quality = 80
 # new image width / height. set to 0,0 to preserve original dimensions
-size = [0,0]
+img_size = [0,0]
 # set to True to disable upscaling of images smaller than resolution
-noupscale = false
+no_upscale = false
 # set to True to disable downscaling of images larger than resolution
-nodownscale = false
+no_downscale = false
 # whether to convert images to grayscale
 grayscale = false
 # space separated list of image formats to always exclude from --compare
-blacklistedfmts = ''
+blacklisted_fmts = ''

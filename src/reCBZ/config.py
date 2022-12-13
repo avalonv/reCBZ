@@ -17,22 +17,22 @@ ZIPCOMMENT:str = 'repacked with reCBZ'
 _cfg = tomllib.loads(resources.read_text("reCBZ", "defaults.toml"))
 
 overwrite:bool = _cfg["general"]["overwrite"]
-ignore_page_err:bool = _cfg["general"]["ignore"]
-force_write:bool = _cfg["general"]["force"]
-no_write:bool = _cfg["general"]["nowrite"]
+ignore_page_err:bool = _cfg["general"]["ignore_page_err"]
+force_write:bool = _cfg["general"]["force_write"]
+no_write:bool = _cfg["general"]["no_write"]
 loglevel:int = _cfg["general"]["loglevel"]
 processes:int = _cfg["general"]["processes"]
-samples_count:int = _cfg["general"]["samplecount"]
-archive_format:str = _cfg["archive"]["archiveformat"]
-compress_zip:int = _cfg["archive"]["compresszip"]
-right_to_left:bool = _cfg["archive"]["righttoleft"]
-img_format:str = _cfg["image"]["imageformat"]
-img_quality:int = _cfg["image"]["quality"]
-img_size:tuple = _cfg["image"]["size"]
-no_upscale:bool = _cfg["image"]["noupscale"]
-no_downscale:bool = _cfg["image"]["nodownscale"]
+samples_count:int = _cfg["general"]["samples_count"]
+archive_format:str = _cfg["archive"]["archive_format"]
+compress_zip:int = _cfg["archive"]["compress_zip"]
+right_to_left:bool = _cfg["archive"]["right_to_left"]
+img_format:str = _cfg["image"]["img_format"]
+img_quality:int = _cfg["image"]["img_quality"]
+img_size:tuple = _cfg["image"]["img_size"]
+no_upscale:bool = _cfg["image"]["no_upscale"]
+no_downscale:bool = _cfg["image"]["no_downscale"]
 grayscale:bool = _cfg["image"]["grayscale"]
-blacklisted_fmts:str = _cfg["image"]["blacklistedfmts"]
+blacklisted_fmts:str = _cfg["image"]["blacklisted_fmts"]
 ebook_profile = None
 
 
@@ -89,6 +89,6 @@ def allowed_page_formats() -> tuple:
     return valid_fmts
 
 
-preload_profile = _cfg["archive"]["ebookprofile"]
-if preload_profile != '':
-    set_profile(preload_profile.upper())
+_preload_profile = _cfg["archive"]["ebook_profile"]
+if _preload_profile != '':
+    set_profile(_preload_profile.upper())
