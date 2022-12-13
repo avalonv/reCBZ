@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from uuid import uuid4
 
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 CMDNAME = 'recbz'
 
 MODULE_PATH = Path(__file__).resolve().parent
