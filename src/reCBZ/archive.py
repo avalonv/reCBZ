@@ -25,11 +25,11 @@ chapter_prefix:str = 'v' # :) :D C:
 
 
 def write_zip(savepath, chapters):
+    mylog(f'Write .zip: {Path(savepath).name}', progress=True)
     new_zip = ZipFile(savepath,'w')
     lead_zeroes = len(str(len(chapters)))
     for i, chapter in enumerate(chapters):
         for page in chapter:
-
             if len(chapters) > 1: # no parent if there's only one chapter
                 dest = Path(f'{chapter_prefix}{i+1:0{lead_zeroes}d}') / page.rel_path
             else:
@@ -46,13 +46,9 @@ def write_zip(savepath, chapters):
 
 def write_epub(savepath, chapters):
     from reCBZ import epub
-    pages = list(chain(*chapters))
     title = Path(savepath).stem
-    mylog(f'Write .epub: {title}.epub', progress=True)
-    if len(chapters) > 1:
-        savepath = epub.multi_chapter_epub(title, chapters)
-    else:
-        savepath = epub.single_chapter_epub(title, pages)
+    mylog(f'Write .epub: {Path(savepath).name}', progress=True)
+    savepath = epub.generate_epub(title, chapters)
 
     # if Config.compress_zip:
     #     ZipFile(savepath, mode='w', compression=ZIP_DEFLATED, compresslevel=9).write(savepath)
@@ -60,12 +56,30 @@ def write_epub(savepath, chapters):
 
 
 def write_mobi(savepath, chapters):
-    import subprocess
+    import subprocess, shlex
+    if config.loglevel >= 2:
+        subprocess.run = partial(subprocess.run, capture_output=True)
+    else:
+        subprocess.run = partial(subprocess.run, capture_output=False)
+
     try:
-        subprocess.run(["kindlegen", "", "/dev/null"], capture_output=True)
+        subprocess.run(["kindlegen", ""])
     except FileNotFoundError:
         raise OSError("'kindlegen' can't be found. is it installed and in PATH?")
-    pass
+
+    title = Path(savepath).stem
+    with tempfile.TemporaryDirectory(dir=reCBZ.GLOBAL_CACHEDIR) as cachedir:
+        tmp_path = tempfile.mktemp(prefix='epub2mobi', dir=cachedir)
+        temp_epub = write_epub(tmp_path, chapters)
+        print('exists?', Path(temp_epub).exists())
+
+        # args = ["-dont_append_source", "-locale", "en",
+        #         "'{temp_epub}'", "-o", "'{title}.mobi'"]
+        args = f"-dont_append_source -locale en '{temp_epub}' -o '{title}.mobi'"
+        mylog(f'Write .mobi: {Path(savepath).name}', progress=True)
+        subprocess.run(["kindlegen", *shlex.split(args)])
+        input(f'please check me out: {tmp_path}')
+
 
 
 def get_format_class(name):
@@ -403,7 +417,6 @@ class ComicArchive():
             # write to current dir
             new_path = Path(f'{self.fp.stem}.{book_format}')
         if new_path.exists():
-            mylog(f'Write .{book_format}: {new_path}', progress=True)
             mylog(f'{new_path} exists, removing...')
             new_path.unlink()
 
@@ -415,7 +428,7 @@ class ComicArchive():
         elif book_format == 'epub':
             return write_epub(new_path, self.fetch_chapters())
         elif book_format == 'mobi':
-            raise NotImplementedError
+            return write_mobi(new_path, self.fetch_chapters())
         else:
             raise ValueError
 

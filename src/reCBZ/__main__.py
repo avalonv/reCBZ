@@ -137,6 +137,12 @@ def main():
         dest="archive_format",
         action="store_const",
         help="save archive as epub")
+    archive_group.add_argument( "--mobi", # ext_group
+        default=None,
+        const='mobi',
+        dest="archive_format",
+        action="store_const",
+        help="save archive as mobi")
     archive_group.add_argument( "--zip", # ext_group
         default=None,
         const='zip',
@@ -159,7 +165,7 @@ def main():
         dest="right_to_left",
         action="store_true",
         help="sort pages from right to left. only affects epub")
-    ext_group = ('epub', 'zip', 'cbz')
+    ext_group = ('epub', 'mobi', 'zip', 'cbz')
     mutually_exclusive_groups.append(ext_group)
 
     images_group = parser.add_argument_group(title="image options")
