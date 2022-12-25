@@ -3,6 +3,7 @@ import platform
 import zipfile
 import re
 import sys
+import shutil
 from pathlib import Path
 
 import reCBZ
@@ -383,6 +384,14 @@ def main():
         exit(1)
     except wrappers.AbortedRepackError:
         exit_code = 2
+    finally:
+        g_cache = reCBZ.GLOBAL_CACHEDIR
+        if g_cache.exists():
+            try:
+                util.mylog(f'cleanup(): {g_cache}')
+                shutil.rmtree(g_cache)
+            except PermissionError:
+                util.mylog(f"PermissionError, couldn't clean {g_cache}")
 
     return exit_code
 

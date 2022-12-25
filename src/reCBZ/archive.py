@@ -431,12 +431,10 @@ class ComicArchive():
     def remove_page(self, index):
         return self._index.pop(index)
 
-    @classmethod
-    def cleanup(cls):
-        g_cache = reCBZ.GLOBAL_CACHEDIR
-        if g_cache.exists():
-            mylog(f'cleanup(): {g_cache}]')
+    def cleanup(self):
+        if self._cachedir.exists():
+            mylog(f'cleanup(): {self._cachedir}')
             try:
-                shutil.rmtree(g_cache)
+                shutil.rmtree(self._cachedir)
             except PermissionError:
-                mylog(f"PermissionError, couldn't clean {g_cache}")
+                mylog(f"PermissionError, couldn't clean {self._cachedir}")
