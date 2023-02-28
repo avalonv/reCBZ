@@ -35,6 +35,8 @@ img_format = ''
 img_quality = 80
 # new image width / height. set to 0,0 to preserve original dimensions
 img_size = [0,0]
+# preserve aspect ratio
+keep_ratio = false
 # set to True to disable upscaling of images smaller than resolution
 no_upscale = false
 # set to True to disable downscaling of images larger than resolution

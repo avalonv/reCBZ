@@ -191,6 +191,11 @@ def main():
         dest="size_str",
         type=str,
         help="rescale images to the specified resolution")
+    images_group.add_argument( "--keepratio",
+        default=None,
+        dest="keep_ratio",
+        action="store_true",
+        help="keep aspect ratio with --size")
     images_group.add_argument( "--noup", # rescale_group
         default=None,
         dest="no_upscale",
